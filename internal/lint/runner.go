@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"github.com/argocd-lint/argocd-lint/internal/config"
+	"github.com/argocd-lint/argocd-lint/internal/dryrun"
 	"github.com/argocd-lint/argocd-lint/internal/loader"
 	"github.com/argocd-lint/argocd-lint/internal/manifest"
 	"github.com/argocd-lint/argocd-lint/internal/render"
@@ -25,6 +26,7 @@ type Options struct {
 	WorkingDir             string
 	Render                 render.Options
 	SeverityThreshold      string
+	DryRun                 dryrun.Options
 }
 
 // Report is the lint result collection.
@@ -116,6 +118,14 @@ func (r *Runner) Run(opts Options) (Report, error) {
 		}
 	}
 
+	var dryRunValidator *dryrun.Validator
+	if opts.DryRun.Enabled {
+		dryRunValidator = dryrun.NewValidator(r.cfg, r.workdir, opts.DryRun)
+		for _, meta := range dryRunValidator.Metadata() {
+			ruleIndex[meta.ID] = meta
+		}
+	}
+
 	for _, m := range included {
 		schemaFindings, err := r.schema.Validate(m)
 		if err != nil {
@@ -130,6 +140,14 @@ func (r *Runner) Run(opts Options) (Report, error) {
 			}
 			findings = append(findings, renderFindings...)
 		}
+	}
+
+	if dryRunValidator != nil {
+		dryRunFindings, err := dryRunValidator.Validate(context.Background(), included)
+		if err != nil {
+			return Report{}, err
+		}
+		findings = append(findings, dryRunFindings...)
 	}
 
 	for _, m := range included {

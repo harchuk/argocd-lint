@@ -94,6 +94,22 @@ argocd-lint ./apps \
 
 Rendering failures surface as `RENDER_HELM` or `RENDER_KUSTOMIZE` findings and respect your rule overrides.
 
+### API validation (dry-run)
+
+Use kubeconform or the Kubernetes API server to validate rendered resources:
+
+```bash
+argocd-lint ./apps --render --dry-run=kubeconform
+
+argocd-lint ./apps \
+  --render \
+  --dry-run=server \
+  --kubeconfig=$HOME/.kube/config \
+  --kube-context=prod
+```
+
+Dry-run failures surface as `DRYRUN_KUBECONFORM` or `DRYRUN_SERVER` findings.
+
 ### Output formats
 
 - `table` (default) – human-readable summary.
@@ -119,6 +135,8 @@ Rendering failures surface as `RENDER_HELM` or `RENDER_KUSTOMIZE` findings and r
 | SCHEMA_APPLICATIONSET | ApplicationSet | error | Compliance | Built-in CRD schema validation. |
 | RENDER_HELM | Application, ApplicationSet | error | Render | `helm template` must succeed (`--render`). |
 | RENDER_KUSTOMIZE | Application, ApplicationSet | error | Render | `kustomize build` must succeed (`--render`). |
+| DRYRUN_KUBECONFORM | Application, ApplicationSet | error | Validation | `kubeconform` must accept the rendered manifest (`--dry-run=kubeconform`). |
+| DRYRUN_SERVER | Application, ApplicationSet | error | Validation | `kubectl --dry-run=server` must accept the manifest (`--dry-run=server`). |
 
 ## Integrations
 

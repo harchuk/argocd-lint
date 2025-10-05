@@ -11,11 +11,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Release tooling, contribution docs, and automation guidance.
 - Additional unit tests for output formatting and the lint runner.
 - Schema smoke tests plus renderer coverage.
+- GHCR container image built and published for each release.
+- Optional dry-run validation (`--dry-run=kubeconform|server`) with findings.
 
 ### Changed
 - Strengthened schema validation (Kubernetes-compliant names, richer source checks).
 - CI `gofmt` check now fails without mutating sources and validates failing manifest behaviour.
 - CLI honours config-driven severity threshold and documents `--version` usage.
+- README documents dry-run usage and expanded rule catalog categories.
 
 ## [0.1.0] - 2024-04-01
 ### Added

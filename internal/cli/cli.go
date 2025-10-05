@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/argocd-lint/argocd-lint/internal/config"
+	"github.com/argocd-lint/argocd-lint/internal/dryrun"
 	"github.com/argocd-lint/argocd-lint/internal/lint"
 	"github.com/argocd-lint/argocd-lint/internal/output"
 	"github.com/argocd-lint/argocd-lint/internal/render"
@@ -30,6 +31,11 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 	kustomizeBinary := flags.String("kustomize-binary", "kustomize", "Kustomize binary to use for rendering")
 	repoRoot := flags.String("repo-root", "", "Override repository root for resolving source paths when rendering")
 	showVersion := flags.Bool("version", false, "Print argocd-lint version and exit")
+	dryRunMode := flags.String("dry-run", "", "Perform extended validation: kubeconform|server")
+	kubeconfig := flags.String("kubeconfig", "", "Path to kubeconfig for server-side dry-run")
+	kubeContext := flags.String("kube-context", "", "Kubernetes context for server-side dry-run")
+	kubectlBinary := flags.String("kubectl-binary", "kubectl", "kubectl binary to use for server dry-run")
+	kubeconformBinary := flags.String("kubeconform-binary", "kubeconform", "kubeconform binary for schema validation")
 
 	if err := flags.Parse(args); err != nil {
 		fmt.Fprintf(stderr, "argument error: %v\n", err)
@@ -98,6 +104,15 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 		RepoRoot:        root,
 	}
 
+	dryRunOpts := dryrun.Options{
+		Enabled:           *dryRunMode != "",
+		Mode:              *dryRunMode,
+		KubectlBinary:     *kubectlBinary,
+		KubeconformBinary: *kubeconformBinary,
+		Kubeconfig:        *kubeconfig,
+		KubeContext:       *kubeContext,
+	}
+
 	threshold := cfg.Threshold
 	if *severityThreshold != "" {
 		threshold = *severityThreshold
@@ -111,6 +126,7 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 		WorkingDir:             wd,
 		Render:                 renderOpts,
 		SeverityThreshold:      threshold,
+		DryRun:                 dryRunOpts,
 	}
 
 	report, err := runner.Run(opts)
