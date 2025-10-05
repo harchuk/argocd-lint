@@ -14,6 +14,7 @@ This repository was bootstrapped with Copilot/Codex-style automation in mind. Wh
 4. Respect `CHANGELOG.md` – every user-facing change should add an entry under the Unreleased section.
 5. Keep `pkg/version/version.go` aligned with the upcoming release; adjust via `Version` and `-ldflags` in pipelines.
 6. Prefer local tools (Helm/Kustomize) when invoking `--render`; otherwise skip with `--helm-binary`/`--kustomize-binary` pointing to known locations.
-7. Do not remove or modify files under `.github/` without maintainer approval – they power issue/PR flows.
+7. Do not remove or modify files under `.github/` without maintainer approval – они поддерживают issue/PR шаблоны.
+8. Перед коммитом очищайте локальные кеши Go (`rm -rf .gocache .gomodcache`) и не добавляйте их в git: `.gitignore` уже содержит эти пути.
 
 Thanks for helping keep the repository healthy!

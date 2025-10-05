@@ -121,16 +121,39 @@ func ruleProjectNotDefault() Rule {
 		Metadata: meta,
 		Applies:  func(m *manifest.Manifest) bool { return true },
 		Check: func(m *manifest.Manifest, ctx *Context, cfg types.ConfiguredRule) []types.Finding {
-			project := getString(m.Object, "spec", "project")
-			if strings.TrimSpace(project) == "" {
-				builder := types.FindingBuilder{Rule: cfg, FilePath: m.FilePath, Line: m.MetadataLine, ResourceName: m.Name, ResourceKind: m.Kind}
-				return []types.Finding{builder.NewFinding("spec.project is empty; specify a project to scope access", types.SeverityError)}
+			builder := types.FindingBuilder{Rule: cfg, FilePath: m.FilePath, Line: m.MetadataLine, ResourceName: m.Name, ResourceKind: m.Kind}
+			checkValue := func(project string) []types.Finding {
+				project = strings.TrimSpace(project)
+				if project == "" {
+					return []types.Finding{builder.NewFinding("spec.project is empty; specify a project to scope access", types.SeverityError)}
+				}
+				if project == "default" {
+					return []types.Finding{builder.NewFinding("spec.project should not be 'default'", types.SeverityError)}
+				}
+				return nil
 			}
-			if project == "default" {
-				builder := types.FindingBuilder{Rule: cfg, FilePath: m.FilePath, Line: m.MetadataLine, ResourceName: m.Name, ResourceKind: m.Kind}
-				return []types.Finding{builder.NewFinding("spec.project should not be 'default'", types.SeverityError)}
+
+			switch m.Kind {
+			case string(types.ResourceKindApplication):
+				return checkValue(getString(m.Object, "spec", "project"))
+			case string(types.ResourceKindApplicationSet):
+				candidates := []string{
+					getString(m.Object, "spec", "project"),
+					getString(m.Object, "spec", "template", "spec", "project"),
+					getString(m.Object, "spec", "applicationSpec", "project"),
+					getString(m.Object, "spec", "applicationCore", "project"),
+				}
+				for _, candidate := range candidates {
+					candidate = strings.TrimSpace(candidate)
+					if candidate == "" {
+						continue
+					}
+					return checkValue(candidate)
+				}
+				return []types.Finding{builder.NewFinding("ApplicationSet template lacks project assignment", types.SeverityError)}
+			default:
+				return nil
 			}
-			return nil
 		},
 	}
 }
