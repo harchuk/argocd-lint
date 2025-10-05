@@ -14,14 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run release-please
-        uses: google-github-actions/release-please-action@v4
+        uses: googleapis/release-please-action@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          release-type: go
-          package-name: argocd-lint
-          include-v-in-tag: true
-          default-branch: main
-          bump-minor-pre-major: true
-          changelog-path: CHANGELOG.md
-          extra-files: |
-            pkg/version/version.go
+          config-file: .release-please-config.json
+          manifest-file: .release-please-manifest.json

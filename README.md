@@ -198,12 +198,6 @@ Helpful references:
 - Releases are automated: every merge to `main` triggers release-please to prepare a draft; tags (`v*`) build cross-platform binaries and publish to GitHub Releases.
 - Container image is published to GHCR (`ghcr.io/<org>/argocd-lint`) alongside each tagged release.
 
-## Roadmap
-
-- Server-side dry-run (kubeconform / `kubectl --dry-run=server`).
-- Policy plug-ins (Rego/OPA) and repo-server plug-in starter kit.
-- Additional best-practice rules (app-of-apps layout, repo structure).
-
 ## Community & support
 
 - Questions or ideas? Open a [feature request](.github/ISSUE_TEMPLATE/feature_request.md).
