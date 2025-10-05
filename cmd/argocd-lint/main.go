@@ -1,12 +1,12 @@
 package main
 
 import (
-    "os"
+	"os"
 
-    "github.com/argocd-lint/argocd-lint/internal/cli"
+	"github.com/argocd-lint/argocd-lint/internal/cli"
 )
 
 func main() {
-    code := cli.Execute(os.Args[1:], os.Stdout, os.Stderr)
-    os.Exit(code)
+	code := cli.Execute(os.Args[1:], os.Stdout, os.Stderr)
+	os.Exit(code)
 }
