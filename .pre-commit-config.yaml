@@ -1,0 +1,8 @@
+repos:
+  - repo: local
+    hooks:
+      - id: argocd-lint
+        name: argocd-lint
+        entry: argocd-lint --format table --severity-threshold=warn
+        language: system
+        files: \.(ya?ml)$

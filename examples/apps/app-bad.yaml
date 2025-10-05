@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: guestbook
+  namespace: argocd
+spec:
+  project: default
+  destination:
+    server: https://1.2.3.4
+  source:
+    repoURL: https://github.com/argoproj/argocd-example-apps.git
+    targetRevision: main
+    path: guestbook
+    chart: guestbook
+  syncPolicy: {}
+  ignoreDifferences:
+    - kind: "*"

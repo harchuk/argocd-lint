@@ -1,0 +1,10 @@
+rules:
+  AR001:
+    severity: error
+  AR006:
+    severity: warn
+overrides:
+  - pattern: "examples/apps/app-bad.yaml"
+    rules:
+      AR006:
+        enabled: false
