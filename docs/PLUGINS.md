@@ -93,6 +93,12 @@ The archives can be attached to GitHub releases or baked into container images
 for offline environments. The core bundle includes opinionated naming and
 metadata checks that complement the built-in rule set.
 
+#### Core bundle
+
+Policies inside `bundles/core/` enforce naming prefixes and required ownership
+labels. Update the bundled Rego modules to match your organisation before
+shipping them broadly.
+
 ### Repo-server integration
 
 To run the same policies inside Argo CD, follow the starter kit in

@@ -4,7 +4,34 @@
 [![Release](https://github.com/argocd-lint/argocd-lint/actions/workflows/release.yaml/badge.svg)](https://github.com/argocd-lint/argocd-lint/actions/workflows/release.yaml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-`argocd-lint` is a fast, offline-first linter for Argo CD `Application` and `ApplicationSet` manifests. It embeds the official CRD schemas, encodes common platform guardrails as rules, and produces CI-friendly output formats so you can block risky changes before they reach the cluster.
+> Fast, offline-first linting for Argo CD `Application` and `ApplicationSet` manifests.
+>
+> - Catch schema and policy drift before it reaches the cluster.
+> - Wire the same guardrails into CI, pre-commit, or Argo CD repo-server.
+> - Extend the rulebook with curated or custom Rego plugins.
+
+## At a glance
+
+| Task | Command or resource |
+| --- | --- |
+| Install the latest release | `go install github.com/argocd-lint/argocd-lint/cmd/argocd-lint@latest` |
+| Run a quick lint with warnings as failures | `argocd-lint ./apps --severity-threshold=warn` |
+| Package curated plugin bundles | `./scripts/package-plugin-bundles.sh dist` |
+| Integrate with Argo CD repo-server | [`docs/REPO_SERVER.md`](docs/REPO_SERVER.md) |
+
+## Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [Configuration](#configuration)
+  - [Optional rendering](#optional-rendering)
+  - [Policy plugins](#policy-plugins)
+  - [API validation (dry-run)](#api-validation-dry-run)
+- [Output formats](#output-formats)
+- [Shipped rules](#shipped-rules)
+- [Integrations](#integrations)
+- [Development](#development)
 
 ## Features
 
@@ -40,20 +67,17 @@ argocd-lint --version
 
 ## Quick start
 
-Lint all Argo CD apps in a folder and fail on warnings:
+Pick the workflow that matches your day-to-day routine:
 
-```bash
-argocd-lint ./apps --severity-threshold=warn
-```
-
-Only lint `ApplicationSet` manifests and render Helm charts beforehand:
-
-```bash
-argocd-lint ./clusters \
-  --appsets \
-  --render \
-  --helm-binary=$(which helm)
-```
+- **Code review gate** – `argocd-lint ./apps --severity-threshold=warn`
+- **ApplicationSet only** – `argocd-lint ./clusters --appsets`
+- **Render and lint Helm charts** –
+  ```bash
+  argocd-lint ./clusters \
+    --render \
+    --helm-binary=$(which helm)
+  ```
+- **Embed in repo-server** – follow [`examples/repo-server-plugin`](examples/repo-server-plugin/README.md)
 
 ## Configuration
 
@@ -107,10 +131,9 @@ argocd-lint ./apps \
 
 Each plugin exports metadata (rule id, default severity, category) and a `deny` rule that returns findings. See [docs/PLUGINS.md](docs/PLUGINS.md) for the schema and authoring guide.
 
-Curated bundles live in `bundles/`, and you can package them for air-gapped
-environments with `./scripts/package-plugin-bundles.sh`. To enforce the same
-policies inside Argo CD, follow the repo-server starter kit in
-[docs/REPO_SERVER.md](docs/REPO_SERVER.md).
+> Tip: curated bundles live in `bundles/`. Package them for air-gapped
+> environments with `./scripts/package-plugin-bundles.sh` and mount them into CI
+> runners or repo-server sidecars.
 
 ### API validation (dry-run)
 
@@ -127,6 +150,19 @@ argocd-lint ./apps \
 ```
 
 Dry-run failures surface as `DRYRUN_KUBECONFORM` or `DRYRUN_SERVER` findings.
+
+### Repo-server integration
+
+Run the exact same lint checks during Argo CD syncs:
+
+1. Build the repo-server image in `examples/repo-server-plugin/` so the container
+   includes `argocd-lint` and your preferred bundles.
+2. Register the Config Management Plugin by patching `argocd-cmp-cm` with
+   `plugin.yaml`.
+3. Point applications at the plugin via `spec.source.plugin.name: argocd-lint` and
+   (optionally) tune parameters like the severity threshold.
+
+Full instructions live in [`docs/REPO_SERVER.md`](docs/REPO_SERVER.md).
 
 ### Output formats
 
