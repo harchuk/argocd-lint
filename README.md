@@ -12,6 +12,7 @@
 - **Rule engine** – ships with opinionated best-practice checks and per-rule severity overrides.
 - **Flexible output** – table (interactive), JSON (automation), and SARIF (GitHub Code Scanning).
 - **Optional rendering** – Helm/Kustomize rendering and findings via `--render`.
+- **Policy plugins** – load custom Rego rules with `--plugin` / `--plugin-dir`.
 - **Integrations** – ready-to-use pre-commit hook, CI workflows, and SARIF upload recipe.
 - **Single binary** – no runtime dependencies; ideal for Git hooks and build agents.
 
@@ -93,6 +94,18 @@ argocd-lint ./apps \
 ```
 
 Rendering failures surface as `RENDER_HELM` or `RENDER_KUSTOMIZE` findings and respect your rule overrides.
+
+### Policy plugins
+
+Load Rego policies to extend the built-in rule set:
+
+```bash
+argocd-lint ./apps \
+  --plugin examples/plugins/require-prefix.rego \
+  --plugin-dir ./custom-policies
+```
+
+Each plugin exports metadata (rule id, default severity, category) and a `deny` rule that returns findings. See [docs/PLUGINS.md](docs/PLUGINS.md) for the schema and authoring guide.
 
 ### API validation (dry-run)
 

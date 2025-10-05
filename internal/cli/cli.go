@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"github.com/argocd-lint/argocd-lint/internal/lint"
 	"github.com/argocd-lint/argocd-lint/internal/output"
 	"github.com/argocd-lint/argocd-lint/internal/render"
+	regoplugin "github.com/argocd-lint/argocd-lint/pkg/plugin/rego"
 	"github.com/argocd-lint/argocd-lint/pkg/types"
 	"github.com/argocd-lint/argocd-lint/pkg/version"
 	"github.com/spf13/pflag"
@@ -36,6 +38,8 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 	kubeContext := flags.String("kube-context", "", "Kubernetes context for server-side dry-run")
 	kubectlBinary := flags.String("kubectl-binary", "kubectl", "kubectl binary to use for server dry-run")
 	kubeconformBinary := flags.String("kubeconform-binary", "kubeconform", "kubeconform binary for schema validation")
+	pluginFiles := flags.StringSlice("plugin", nil, "Path to a Rego plugin module (repeatable)")
+	pluginDirs := flags.StringSlice("plugin-dir", nil, "Directory of Rego plugin modules (repeatable, recursive)")
 
 	if err := flags.Parse(args); err != nil {
 		fmt.Fprintf(stderr, "argument error: %v\n", err)
@@ -80,6 +84,29 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		fmt.Fprintf(stderr, "runner error: %v\n", err)
 		return 2
+	}
+
+	if len(*pluginFiles) > 0 || len(*pluginDirs) > 0 {
+		var resolved []string
+		for _, p := range append(*pluginFiles, *pluginDirs...) {
+			path, err := ResolvePath(p)
+			if err != nil {
+				fmt.Fprintf(stderr, "plugin path error: %v\n", err)
+				return 2
+			}
+			if _, err := os.Stat(path); err != nil {
+				fmt.Fprintf(stderr, "plugin path error: %v\n", err)
+				return 2
+			}
+			resolved = append(resolved, path)
+		}
+		loader := regoplugin.NewLoader(resolved...)
+		plugins, err := loader.Load(context.Background())
+		if err != nil {
+			fmt.Fprintf(stderr, "plugin load error: %v\n", err)
+			return 2
+		}
+		runner.RegisterPlugins(plugins...)
 	}
 
 	root := *repoRoot

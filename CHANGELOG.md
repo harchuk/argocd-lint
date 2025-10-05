@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Schema smoke tests plus renderer coverage.
 - GHCR container image built and published for each release.
 - Optional dry-run validation (`--dry-run=kubeconform|server`) with findings.
+- Rego plugin adapter with `--plugin` / `--plugin-dir` CLI flags and sample policy.
 
 ### Changed
 - Strengthened schema validation (Kubernetes-compliant names, richer source checks).

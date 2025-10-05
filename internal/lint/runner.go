@@ -61,6 +61,14 @@ func NewRunner(cfg config.Config, workdir string) (*Runner, error) {
 	}, nil
 }
 
+// RegisterPlugins registers additional rule plugins.
+func (r *Runner) RegisterPlugins(plugins ...plugin.RulePlugin) {
+	if r.plugins == nil {
+		r.plugins = plugin.NewRegistry()
+	}
+	r.plugins.Register(plugins...)
+}
+
 // Run executes the linting workflow.
 func (r *Runner) Run(opts Options) (Report, error) {
 	if opts.Target == "" {
@@ -104,6 +112,12 @@ func (r *Runner) Run(opts Options) (Report, error) {
 	}
 	for _, rl := range r.rules {
 		ruleIndex[rl.Metadata.ID] = rl.Metadata
+	}
+	if r.plugins != nil {
+		for _, plug := range r.plugins.Plugins() {
+			meta := plug.Metadata()
+			ruleIndex[meta.ID] = meta
+		}
 	}
 
 	var renderer *render.Renderer
@@ -166,27 +180,42 @@ func (r *Runner) Run(opts Options) (Report, error) {
 		}
 		if r.plugins != nil {
 			ctxWithRule := context.Background()
-			for _, plugin := range r.plugins.Plugins() {
-				if applies := plugin.AppliesTo(); applies != nil && !applies(m) {
+			for _, plug := range r.plugins.Plugins() {
+				if applies := plug.AppliesTo(); applies != nil && !applies(m) {
 					continue
 				}
-				cfg, err := r.cfg.Resolve(plugin.Metadata(), m.FilePath)
+				cfg, err := r.cfg.Resolve(plug.Metadata(), m.FilePath)
 				if err != nil {
 					return Report{}, err
 				}
 				if !cfg.Enabled {
 					continue
 				}
-				findingsFromPlugin, err := plugin.Check(ctxWithRule, m)
+				results, err := plug.Check(ctxWithRule, m)
 				if err != nil {
 					return Report{}, err
 				}
-				for _, f := range findingsFromPlugin {
+				for _, f := range results {
 					if f.RuleID == "" {
 						f.RuleID = cfg.Metadata.ID
 					}
 					if f.Severity == "" {
 						f.Severity = cfg.Severity
+					}
+					if f.FilePath == "" {
+						f.FilePath = m.FilePath
+					}
+					if f.ResourceName == "" {
+						f.ResourceName = m.Name
+					}
+					if f.ResourceKind == "" {
+						f.ResourceKind = m.Kind
+					}
+					if f.Category == "" {
+						f.Category = cfg.Metadata.Category
+					}
+					if f.HelpURL == "" {
+						f.HelpURL = cfg.Metadata.HelpURL
 					}
 					findings = append(findings, f)
 				}

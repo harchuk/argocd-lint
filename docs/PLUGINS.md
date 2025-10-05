@@ -1,14 +1,88 @@
 # Plugin Roadmap
 
-`pkg/plugin` defines a minimal interface for future policy extensions. A plugin:
+`pkg/plugin` now ships with a Rego adapter so custom policy bundles can participate in lint runs.
 
-- exposes metadata (`types.RuleMetadata`)
-- provides an applicability matcher
-- returns findings from `Check`
+## Rego plugin format
 
-Next steps:
+Create a `.rego` module that exposes three entry points:
 
-1. Add registry wiring in `internal/lint/runner` so plugins participate alongside built-in rules.
-2. Provide a Rego adapter that evaluates OPA policies packaged with the binary.
-3. Surface CLI flags (`--plugin-dir`, `--plugin`), and document how repo-server plugins can reuse the same rules.
-4. Publish an example plugin implementing the interface and add tests around the registry.
+- `metadata` (object, required) – describes the rule and default configuration.
+- `deny` (set or array of objects, required) – returns findings for the manifest under evaluation.
+- `applies` (boolean rule, optional) – when present, determines whether the plugin should run for the current manifest.
+
+Example (`examples/plugins/require-prefix.rego`):
+
+```rego
+package argocd_lint.require_prefix
+
+metadata := {
+  "id": "RG100",
+  "description": "Application names must include the team prefix",
+  "severity": "warn",
+  "applies_to": ["Application"],
+  "category": "Consistency",
+  "help_url": "https://example.com/argocd-lint/plugins#prefix",
+}
+
+required_prefix := "team-"
+
+applies {
+  input.kind == "Application"
+}
+
+deny[f] {
+  not startswith(input.name, required_prefix)
+
+  f := {
+    "message": sprintf("%s is missing required prefix %s", [input.name, required_prefix]),
+    "resource_name": input.name,
+    "severity": "error",
+  }
+}
+```
+
+### Metadata contract
+
+`metadata` must include:
+
+- `id` (string) – unique rule identifier.
+- `description` (string) – short summary.
+- `severity` (string) – `info`, `warn`, or `error` used as the default.
+
+Optional keys:
+
+- `applies_to` – array of resource kinds (`Application`, `ApplicationSet`).
+- `help_url` – additional documentation link.
+- `category` – reporting category string.
+- `enabled` – set to `false` to disable by default.
+
+### Finding schema
+
+Each entry emitted by `deny` must be an object. All fields are optional; argocd-lint fills in sensible defaults (file path, resource name/kind, rule id, severity) when they are omitted.
+
+Supported keys include:
+
+- `message` – human-friendly explanation.
+- `severity` – override configured severity (`info|warn|error`).
+- `rule_id` – override the reported rule ID.
+- `file`, `line`, `column` – location metadata.
+- `resource_name`, `resource_kind` – override resource metadata.
+- `category`, `help_url` – override defaults from metadata.
+
+### CLI usage
+
+Pass individual modules or whole directories using the new flags:
+
+```bash
+argocd-lint ./manifests \
+  --plugin examples/plugins/require-prefix.rego \
+  --plugin-dir ./more-policies
+```
+
+The loader recursively discovers `.rego` files in the supplied directories. Plugins participate in configuration overrides just like built-in rules, so you can tweak severities through the standard `rules` and `overrides` sections.
+
+### Roadmap
+
+1. Provide an optional plugin bundle within the release artifacts.
+2. Document repo-server integration patterns and publish a starter kit.
+3. Add conformance tests that validate third-party plugin bundles.

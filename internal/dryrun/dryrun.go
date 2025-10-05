@@ -160,7 +160,9 @@ func runCommand(ctx context.Context, dir, binary string, args ...string) (string
 	err := cmd.Run()
 	output := strings.TrimSpace(strings.Join([]string{stdout.String(), stderr.String()}, "\n"))
 	if output == "" {
-		output = err.Error()
+		if err != nil {
+			output = err.Error()
+		}
 	}
 	return output, err
 }
