@@ -82,6 +82,7 @@ Pick the workflow that matches your day-to-day routine:
 
 - **Code review gate** – `argocd-lint ./apps --severity-threshold=warn`
 - **ApplicationSet only** – `argocd-lint ./clusters --apps=false --appsets`
+- **Preview ApplicationSet plan** – `argocd-lint applicationset plan --file appset.yaml`
 - **Render and lint Helm charts** –
   ```bash
   argocd-lint ./clusters \

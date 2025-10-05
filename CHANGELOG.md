@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `--argocd-version` flag to pin schema validation to bundled Argo CD CRD versions with compatibility tests.
 - `argocd-lint plugins list` subcommand for exploring curated bundle metadata.
 - Community bundle submission guidelines and review checklist.
+- `argocd-lint applicationset plan` preview command to simulate generated Applications and drift.
 
 ### Changed
 - Strengthened schema validation (Kubernetes-compliant names, richer source checks).

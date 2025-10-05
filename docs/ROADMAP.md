@@ -14,7 +14,6 @@
 - Added `--argocd-version` schema pinning with compatibility tests across bundled CRDs.
 - Documented community bundle submission guidelines.
 - Added `argocd-lint plugins list` metadata explorer for curated policy bundles.
+- Shipped `argocd-lint applicationset plan` preview for ApplicationSet drift estimation.
 
 ## Upcoming Enhancements
-
-- **ApplicationSet plan preview**: introduce an `applicationset plan` preview mode with drift impact estimation.

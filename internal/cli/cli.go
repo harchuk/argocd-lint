@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/argocd-lint/argocd-lint/internal/appsetplan"
 	"github.com/argocd-lint/argocd-lint/internal/config"
 	"github.com/argocd-lint/argocd-lint/internal/dryrun"
 	"github.com/argocd-lint/argocd-lint/internal/lint"
@@ -23,8 +24,13 @@ import (
 
 // Execute is the entrypoint for the CLI. Returns process exit code.
 func Execute(args []string, stdout, stderr io.Writer) int {
-	if len(args) > 0 && args[0] == "plugins" {
-		return runPluginsCommand(args[1:], stdout, stderr)
+	if len(args) > 0 {
+		switch args[0] {
+		case "plugins":
+			return runPluginsCommand(args[1:], stdout, stderr)
+		case "applicationset":
+			return runApplicationSetCommand(args[1:], stdout, stderr)
+		}
 	}
 	flags := pflag.NewFlagSet("argocd-lint", pflag.ContinueOnError)
 	flags.SetOutput(stderr)
@@ -389,6 +395,147 @@ func renderPluginTable(rows []pluginRow, w io.Writer) error {
 	}
 	_, err := fmt.Fprintf(w, "\nTotal: %d rules\n", len(rows))
 	return err
+}
+
+func runApplicationSetCommand(args []string, stdout, stderr io.Writer) int {
+	if len(args) == 0 || args[0] == "plan" {
+		return runApplicationSetPlan(args, stdout, stderr)
+	}
+	fmt.Fprintln(stderr, "Usage: argocd-lint applicationset plan --file <path> [flags]")
+	return 2
+}
+
+func runApplicationSetPlan(args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "plan" {
+		args = args[1:]
+	}
+	flags := pflag.NewFlagSet("applicationset plan", pflag.ContinueOnError)
+	flags.SetOutput(stderr)
+	file := flags.String("file", "", "Path to ApplicationSet manifest")
+	current := flags.String("current", "", "Directory or file with existing Application manifests")
+	format := flags.String("format", "table", "Output format: table|json")
+	if err := flags.Parse(args); err != nil {
+		printError(stderr, "argument", err)
+		return 2
+	}
+	if strings.TrimSpace(*file) == "" {
+		fmt.Fprintln(stderr, "--file is required")
+		return 2
+	}
+	plan, err := appsetplan.Generate(appsetplan.Options{AppSetPath: *file, CurrentDir: *current})
+	if err != nil {
+		printError(stderr, "plan", err)
+		return 2
+	}
+	switch strings.ToLower(*format) {
+	case "", "table":
+		if err := renderPlanTable(plan, stdout); err != nil {
+			printError(stderr, "output", err)
+			return 2
+		}
+		return 0
+	case "json":
+		enc := json.NewEncoder(stdout)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(plan); err != nil {
+			printError(stderr, "output", err)
+			return 2
+		}
+		return 0
+	default:
+		printError(stderr, "format", fmt.Errorf("unsupported format %q", *format))
+		return 2
+	}
+}
+
+func renderPlanTable(plan appsetplan.Result, w io.Writer) error {
+	headers := []string{"Action", "Name", "Destination", "Source"}
+	widths := make([]int, len(headers))
+	for i, head := range headers {
+		widths[i] = len(head)
+	}
+	rows := make([][]string, 0, len(plan.Rows))
+	for _, row := range plan.Rows {
+		entry := []string{
+			strings.ToUpper(string(row.Action)),
+			row.Name,
+			formatDestination(row.Destination),
+			formatSource(row.Source),
+		}
+		rows = append(rows, entry)
+		for i, cell := range entry {
+			if len(cell) > widths[i] {
+				widths[i] = len(cell)
+			}
+		}
+	}
+	separator := make([]string, len(widths))
+	for i, width := range widths {
+		separator[i] = strings.Repeat("-", width+2)
+	}
+	line := func(values []string) string {
+		var b strings.Builder
+		b.WriteString("|")
+		for i, width := range widths {
+			fmt.Fprintf(&b, " %-*s ", width, values[i])
+			b.WriteString("|")
+		}
+		b.WriteString("\n")
+		return b.String()
+	}
+	if _, err := fmt.Fprintln(w, "+"+strings.Join(separator, "+")+"+"); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, line(headers)); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(w, "+"+strings.Join(separator, "+")+"+"); err != nil {
+		return err
+	}
+	for _, row := range rows {
+		if _, err := io.WriteString(w, line(row)); err != nil {
+			return err
+		}
+	}
+	if _, err := fmt.Fprintln(w, "+"+strings.Join(separator, "+")+"+"); err != nil {
+		return err
+	}
+	_, err := fmt.Fprintf(w, "\nTotal: %d  create=%d  delete=%d  unchanged=%d\n", plan.Summary.Total, plan.Summary.Create, plan.Summary.Delete, plan.Summary.Unchanged)
+	return err
+}
+
+func formatDestination(dest appsetplan.DestinationPreview) string {
+	parts := make([]string, 0, 3)
+	if dest.Namespace != "" {
+		parts = append(parts, dest.Namespace)
+	}
+	if dest.Name != "" {
+		parts = append(parts, dest.Name)
+	}
+	if dest.Server != "" {
+		parts = append(parts, dest.Server)
+	}
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, " | ")
+}
+
+func formatSource(src appsetplan.SourcePreview) string {
+	parts := make([]string, 0, 3)
+	if src.RepoURL != "" {
+		parts = append(parts, src.RepoURL)
+	}
+	if src.Path != "" {
+		parts = append(parts, src.Path)
+	}
+	if src.Chart != "" {
+		parts = append(parts, fmt.Sprintf("chart=%s", src.Chart))
+	}
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, " | ")
 }
 
 func printError(w io.Writer, stage string, err error) {
