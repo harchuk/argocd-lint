@@ -12,9 +12,9 @@
 - Refined CLI/table presentation for friendlier human-readable reports.
 - Delivered AppProject guardrails, multi-source conflict detection, and ownership label guidance.
 - Added `--argocd-version` schema pinning with compatibility tests across bundled CRDs.
+- Documented community bundle submission guidelines.
+- Added `argocd-lint plugins list` metadata explorer for curated policy bundles.
 
 ## Upcoming Enhancements
 
 - **ApplicationSet plan preview**: introduce an `applicationset plan` preview mode with drift impact estimation.
-- **Community bundle submissions**: document contribution guidelines and review process for third-party rules.
-- **Policy metadata explorer**: surface bundle and rule metadata in the CLI for easy discoverability (`argocd-lint plugins list`).

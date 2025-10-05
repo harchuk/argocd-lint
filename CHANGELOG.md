@@ -16,6 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Rego plugin adapter with `--plugin` / `--plugin-dir` CLI flags and sample policy.
 - AppProject guardrails plus stricter source/label checks for Applications and ApplicationSets.
 - `--argocd-version` flag to pin schema validation to bundled Argo CD CRD versions with compatibility tests.
+- `argocd-lint plugins list` subcommand for exploring curated bundle metadata.
+- Community bundle submission guidelines and review checklist.
 
 ### Changed
 - Strengthened schema validation (Kubernetes-compliant names, richer source checks).

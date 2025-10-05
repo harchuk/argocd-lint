@@ -165,3 +165,48 @@ deny[f] {
 		t.Fatalf("expected findings when applies=true")
 	}
 }
+
+func TestDiscoverMetadata(t *testing.T) {
+	dir := t.TempDir()
+	modulePath := filepath.Join(dir, "meta.rego")
+	module := `package argocd_lint.meta
+
+metadata := {
+  "id": "RG010",
+  "description": "metadata discovery test",
+  "severity": "info",
+  "applies_to": ["ApplicationSet"],
+  "category": "Advisory",
+}
+
+deny[f] {
+  f := {"message": "noop"}
+}
+`
+	if err := os.WriteFile(modulePath, []byte(module), 0o644); err != nil {
+		t.Fatalf("write module: %v", err)
+	}
+	records, missing, err := regoloader.DiscoverMetadata(context.Background(), modulePath)
+	if err != nil {
+		t.Fatalf("discover metadata: %v", err)
+	}
+	if len(missing) != 0 {
+		t.Fatalf("unexpected missing paths reported: %v", missing)
+	}
+	if len(records) != 1 {
+		t.Fatalf("expected 1 record, got %d", len(records))
+	}
+	record := records[0]
+	if record.Metadata.ID != "RG010" {
+		t.Fatalf("unexpected rule id: %s", record.Metadata.ID)
+	}
+	if record.Metadata.Description != "metadata discovery test" {
+		t.Fatalf("unexpected description: %s", record.Metadata.Description)
+	}
+	if len(record.Metadata.AppliesTo) != 1 || record.Metadata.AppliesTo[0] != "ApplicationSet" {
+		t.Fatalf("unexpected appliesTo: %+v", record.Metadata.AppliesTo)
+	}
+	if record.Source != modulePath {
+		t.Fatalf("expected source %s, got %s", modulePath, record.Source)
+	}
+}

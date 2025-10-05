@@ -1,7 +1,7 @@
 # argocd-lint
 
-[![CI]](https://github.com/argocd-lint/argocd-lint/actions/workflows/ci.yaml)
-[![Release]](https://github.com/argocd-lint/argocd-lint/actions/workflows/release.yaml)
+[CI](https://github.com/argocd-lint/argocd-lint/actions/workflows/ci.yaml)
+[Release]https://github.com/argocd-lint/argocd-lint/actions/workflows/release.yaml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 ![argocd-lint ready badge](docs/assets/badge.svg)
 
@@ -20,6 +20,7 @@
 | Install the latest release | `go install github.com/argocd-lint/argocd-lint/cmd/argocd-lint@latest` |
 | Run a quick lint with warnings as failures | `argocd-lint ./apps --severity-threshold=warn` |
 | Package curated plugin bundles | `./scripts/package-plugin-bundles.sh dist` |
+| List curated plugin metadata | `argocd-lint plugins list` |
 | Integrate with Argo CD repo-server | [`docs/REPO_SERVER.md`](docs/REPO_SERVER.md) |
 
 ## Contents
@@ -45,7 +46,6 @@
 - **Policy plugins** – load custom Rego rules or curated bundles with `--plugin` / `--plugin-dir`.
 - **Integrations** – ready-to-use pre-commit hook, CI workflows, and SARIF upload recipe.
 - **Single binary** – no runtime dependencies; ideal for Git hooks and build agents.
-- **Version-aware validation** – pin CRD schemas to an Argo CD release via `--argocd-version`.
 
 ### Why platform teams ship it
 
@@ -132,16 +132,6 @@ argocd-lint ./apps \
 
 Rendering failures surface as `RENDER_HELM` or `RENDER_KUSTOMIZE` findings and respect your rule overrides.
 
-### Schema pinning
-
-Match validation to the Argo CD control-plane version:
-
-```bash
-argocd-lint ./apps --argocd-version=v2.8
-```
-
-If omitted, the latest bundled CRDs are used.
-
 ### Policy plugins
 
 Load Rego policies to extend the built-in rule set:
@@ -153,6 +143,12 @@ argocd-lint ./apps \
 ```
 
 Each plugin exports metadata (rule id, default severity, category) and a `deny` rule that returns findings. See [docs/PLUGINS.md](docs/PLUGINS.md) for the schema and authoring guide.
+
+List the shipped policies and their metadata with:
+
+```bash
+argocd-lint plugins list --dir bundles/core
+```
 
 > Tip: curated bundles live in `bundles/`. Package them for air-gapped
 > environments with `./scripts/package-plugin-bundles.sh` and mount them into CI

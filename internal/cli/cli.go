@@ -2,10 +2,12 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/argocd-lint/argocd-lint/internal/config"
@@ -21,6 +23,9 @@ import (
 
 // Execute is the entrypoint for the CLI. Returns process exit code.
 func Execute(args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "plugins" {
+		return runPluginsCommand(args[1:], stdout, stderr)
+	}
 	flags := pflag.NewFlagSet("argocd-lint", pflag.ContinueOnError)
 	flags.SetOutput(stderr)
 
@@ -199,6 +204,191 @@ func ResolvePath(target string) (string, error) {
 		return "", err
 	}
 	return filepath.Join(wd, target), nil
+}
+
+type pluginRow struct {
+	Bundle      string   `json:"bundle"`
+	Rule        string   `json:"rule"`
+	Severity    string   `json:"severity"`
+	AppliesTo   []string `json:"appliesTo"`
+	Category    string   `json:"category,omitempty"`
+	Description string   `json:"description"`
+	HelpURL     string   `json:"helpUrl,omitempty"`
+	Source      string   `json:"source"`
+}
+
+func runPluginsCommand(args []string, stdout, stderr io.Writer) int {
+	if len(args) == 0 || args[0] == "list" {
+		return runPluginsList(args, stdout, stderr)
+	}
+	fmt.Fprintln(stderr, "Usage: argocd-lint plugins list [flags]")
+	return 2
+}
+
+func runPluginsList(args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "list" {
+		args = args[1:]
+	}
+	flags := pflag.NewFlagSet("plugins list", pflag.ContinueOnError)
+	flags.SetOutput(stderr)
+	dirs := flags.StringSlice("dir", nil, "Bundle directories to inspect (default: ./bundles)")
+	format := flags.String("format", "table", "Output format: table|json")
+	if err := flags.Parse(args); err != nil {
+		printError(stderr, "argument", err)
+		return 2
+	}
+	roots := *dirs
+	if len(roots) == 0 {
+		roots = []string{"bundles"}
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		printError(stderr, "workdir", err)
+		return 2
+	}
+	var rows []pluginRow
+	ctx := context.Background()
+	for _, root := range roots {
+		resolved, err := ResolvePath(root)
+		if err != nil {
+			printError(stderr, "plugin dir", err)
+			return 2
+		}
+		info, statErr := os.Stat(resolved)
+		if statErr != nil {
+			printError(stderr, "plugin dir", statErr)
+			return 2
+		}
+		records, missing, err := regoplugin.DiscoverMetadata(ctx, resolved)
+		if err != nil {
+			printError(stderr, "plugin load", err)
+			return 2
+		}
+		if len(missing) > 0 {
+			printError(stderr, "plugin path", fmt.Errorf("missing: %s", strings.Join(missing, ", ")))
+			return 2
+		}
+		bundleName := info.Name()
+		if !info.IsDir() {
+			bundleName = filepath.Base(filepath.Dir(resolved))
+		}
+		for _, rec := range records {
+			source := rec.Source
+			if rel, relErr := filepath.Rel(wd, source); relErr == nil {
+				source = rel
+			}
+			applies := make([]string, 0, len(rec.Metadata.AppliesTo))
+			for _, kind := range rec.Metadata.AppliesTo {
+				applies = append(applies, string(kind))
+			}
+			rows = append(rows, pluginRow{
+				Bundle:      bundleName,
+				Rule:        rec.Metadata.ID,
+				Severity:    string(rec.Metadata.DefaultSeverity),
+				AppliesTo:   applies,
+				Category:    rec.Metadata.Category,
+				Description: rec.Metadata.Description,
+				HelpURL:     rec.Metadata.HelpURL,
+				Source:      source,
+			})
+		}
+	}
+	if len(rows) == 0 {
+		fmt.Fprintln(stdout, "No plugins found.")
+		return 0
+	}
+	sort.Slice(rows, func(i, j int) bool {
+		if rows[i].Bundle == rows[j].Bundle {
+			return rows[i].Rule < rows[j].Rule
+		}
+		return rows[i].Bundle < rows[j].Bundle
+	})
+	switch strings.ToLower(*format) {
+	case "", "table":
+		if err := renderPluginTable(rows, stdout); err != nil {
+			printError(stderr, "output", err)
+			return 2
+		}
+		return 0
+	case "json":
+		enc := json.NewEncoder(stdout)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(rows); err != nil {
+			printError(stderr, "output", err)
+			return 2
+		}
+		return 0
+	default:
+		printError(stderr, "format", fmt.Errorf("unsupported format %q", *format))
+		return 2
+	}
+}
+
+func renderPluginTable(rows []pluginRow, w io.Writer) error {
+	headers := []string{"Bundle", "Rule", "Severity", "Applies", "Category", "Description", "Source"}
+	widths := make([]int, len(headers))
+	for i, header := range headers {
+		widths[i] = len(header)
+	}
+	data := make([][]string, 0, len(rows))
+	for _, row := range rows {
+		severity := strings.ToUpper(row.Severity)
+		if severity == "" {
+			severity = "INFO"
+		}
+		applies := "-"
+		if len(row.AppliesTo) > 0 {
+			applies = strings.Join(row.AppliesTo, ",")
+		}
+		entry := []string{
+			row.Bundle,
+			row.Rule,
+			severity,
+			applies,
+			row.Category,
+			row.Description,
+			row.Source,
+		}
+		data = append(data, entry)
+		for i, cell := range entry {
+			if len(cell) > widths[i] {
+				widths[i] = len(cell)
+			}
+		}
+	}
+	separator := make([]string, len(widths))
+	for i, width := range widths {
+		separator[i] = strings.Repeat("-", width+2)
+	}
+	lineFmt := func(values []string) string {
+		var b strings.Builder
+		b.WriteString("|")
+		for i, width := range widths {
+			fmt.Fprintf(&b, " %-*s ", width, values[i])
+			b.WriteString("|")
+		}
+		b.WriteString("\n")
+		return b.String()
+	}
+	if _, err := fmt.Fprintln(w, "+"+strings.Join(separator, "+")+"+"); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, lineFmt(headers)); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(w, "+"+strings.Join(separator, "+")+"+"); err != nil {
+		return err
+	}
+	for _, row := range data {
+		if _, err := io.WriteString(w, lineFmt(row)); err != nil {
+			return err
+		}
+	}
+	if _, err := fmt.Fprintln(w, "+"+strings.Join(separator, "+")+"+"); err != nil {
+		return err
+	}
+	_, err := fmt.Fprintf(w, "\nTotal: %d rules\n", len(rows))
+	return err
 }
 
 func printError(w io.Writer, stage string, err error) {

@@ -72,6 +72,36 @@ func NewLoader(paths ...string) *Loader {
 	return &Loader{files: normalized, missing: missing}
 }
 
+// MetadataRecord describes a discovered plugin rule.
+type MetadataRecord struct {
+	Source   string
+	Metadata types.RuleMetadata
+}
+
+// DiscoverMetadata loads metadata for the provided plugin paths without
+// retaining the instantiated plugins. Missing paths are returned for caller
+// awareness.
+func DiscoverMetadata(ctx context.Context, paths ...string) ([]MetadataRecord, []string, error) {
+	loader := NewLoader(paths...)
+	records := make([]MetadataRecord, 0, len(loader.files))
+	for _, file := range loader.files {
+		plug, err := loadFile(ctx, file)
+		if err != nil {
+			return nil, loader.missing, err
+		}
+		if rp, ok := plug.(*regoPlugin); ok {
+			records = append(records, MetadataRecord{Source: rp.source, Metadata: rp.meta})
+		}
+	}
+	sort.Slice(records, func(i, j int) bool {
+		if records[i].Metadata.ID == records[j].Metadata.ID {
+			return records[i].Source < records[j].Source
+		}
+		return records[i].Metadata.ID < records[j].Metadata.ID
+	})
+	return records, loader.missing, nil
+}
+
 // Load instantiates RulePlugin implementations from the loader's files.
 func (l *Loader) Load(ctx context.Context) ([]plugin.RulePlugin, error) {
 	if len(l.missing) > 0 {
@@ -89,6 +119,7 @@ func (l *Loader) Load(ctx context.Context) ([]plugin.RulePlugin, error) {
 }
 
 type regoPlugin struct {
+	source       string
 	meta         types.RuleMetadata
 	denyQuery    rego.PreparedEvalQuery
 	appliesQuery *rego.PreparedEvalQuery
@@ -208,7 +239,7 @@ func loadFile(ctx context.Context, path string) (plugin.RulePlugin, error) {
 		return nil, err
 	}
 
-	return &regoPlugin{meta: meta, denyQuery: denyQuery, appliesQuery: appliesQuery}, nil
+	return &regoPlugin{source: path, meta: meta, denyQuery: denyQuery, appliesQuery: appliesQuery}, nil
 }
 
 func manifestToInput(m *manifest.Manifest) map[string]interface{} {

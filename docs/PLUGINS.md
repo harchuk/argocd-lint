@@ -105,6 +105,27 @@ Located at `bundles/security/`, these rules focus on HTTPS destinations and Git
 repositories served over secure transports. Combine them with the core bundle or
 extend them with organisation-specific controls.
 
+### Community bundle submissions
+
+We welcome third-party bundles that follow these guardrails:
+
+1. **Structure** – place each bundle under `bundles/<name>/` with a short
+   `README.md` describing the intent, ownership, and configuration knobs.
+2. **Metadata completeness** – every rule must populate `id`, `description`,
+   `severity`, `category`, and (where applicable) `help_url` so downstream
+   tooling can surface context.
+3. **Deterministic tests** – ensure the curated bundle test suite continues to
+   pass (`go test ./pkg/plugin/rego`); add focused rule tests when behaviour is
+   more complex than metadata checks.
+4. **Documentation** – reference real-world examples or playbooks so reviewers
+   can verify the rule logic and intended rollout pattern.
+5. **Review checklist** – PRs should include sample lint output and, ideally,
+   a `argocd-lint plugins list --dir bundles/<name>` snippet to highlight the
+   new rule metadata.
+
+Maintainers verify that bundles compile, include actionable metadata, and ship
+with clear guidance before merging community contributions.
+
 ### Repo-server integration
 
 To run the same policies inside Argo CD, follow the starter kit in
