@@ -178,6 +178,7 @@ Helpful references:
 - [docs/RELEASING.md](docs/RELEASING.md) – maintainer release guide.
 - [docs/PLUGINS.md](docs/PLUGINS.md) – roadmap for custom policy plug-ins.
 - Releases are automated: every merge to `main` triggers release-please to prepare a draft; tags (`v*`) build cross-platform binaries and publish to GitHub Releases.
+- Container image is published to GHCR (`ghcr.io/<org>/argocd-lint`) alongside each tagged release.
 
 ## Roadmap
 
