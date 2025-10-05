@@ -36,6 +36,7 @@ func DefaultRules() []Rule {
 		ruleApplicationSetGoTemplateOptions(),
 		ruleSourceConsistency(),
 		ruleRecommendedLabels(),
+		ruleAppProjectGuardrails(),
 	}
 }
 
@@ -412,11 +413,11 @@ func ruleSourceConsistency() Rule {
 				findings = append(findings, builder.NewFinding("Use either spec.source or spec.sources, not both", types.SeverityError))
 			}
 			if len(source) != 0 {
-				findings = append(findings, validateSource(builder, source)...)
+				findings = append(findings, validateSource(builder, source, "$.spec.source")...)
 			}
 			for _, raw := range sources {
 				if src, ok := raw.(map[string]interface{}); ok {
-					findings = append(findings, validateSource(builder, src)...)
+					findings = append(findings, validateSource(builder, src, "$.spec.sources[]")...)
 				}
 			}
 			return findings
@@ -424,7 +425,7 @@ func ruleSourceConsistency() Rule {
 	}
 }
 
-func validateSource(builder types.FindingBuilder, src map[string]interface{}) []types.Finding {
+func validateSource(builder types.FindingBuilder, src map[string]interface{}, sourcePath string) []types.Finding {
 	var findings []types.Finding
 	repo := strings.TrimSpace(getStringMap(src, "repoURL"))
 	if repo == "" {
@@ -438,6 +439,46 @@ func validateSource(builder types.FindingBuilder, src map[string]interface{}) []
 	if pathVal == "" && chartVal == "" {
 		findings = append(findings, builder.NewFinding("provide source.path for Git or source.chart for Helm", types.SeverityWarn))
 	}
+	if directory := getMap(src, "directory"); len(directory) > 0 {
+		if helm := getMap(src, "helm"); len(helm) > 0 {
+			finding := builder.NewFinding("directory and helm options conflict in Application source", types.SeverityError)
+			finding.Suggestions = []types.Suggestion{
+				{
+					Title:       "Remove mutually exclusive source sections",
+					Description: "Use either the directory generator or Helm configuration for a source, not both.",
+					Patch:       "# remove either directory: or helm: block",
+					Path:        sourcePath,
+				},
+			}
+			findings = append(findings, finding)
+		}
+		if kustomize := getMap(src, "kustomize"); len(kustomize) > 0 {
+			finding := builder.NewFinding("directory and kustomize cannot be combined in one source", types.SeverityError)
+			finding.Suggestions = []types.Suggestion{
+				{
+					Title:       "Split directory and kustomize sources",
+					Description: "Define separate sources for raw directories and kustomize overlays.",
+					Patch:       "# move kustomize: block to a dedicated source entry",
+					Path:        sourcePath,
+				},
+			}
+			findings = append(findings, finding)
+		}
+	}
+	if kustomize := getMap(src, "kustomize"); len(kustomize) > 0 {
+		if helm := getMap(src, "helm"); len(helm) > 0 {
+			finding := builder.NewFinding("helm and kustomize options conflict; choose one renderer", types.SeverityError)
+			finding.Suggestions = []types.Suggestion{
+				{
+					Title:       "Separate Helm and Kustomize configurations",
+					Description: "Use distinct sources when mixing Helm charts and Kustomize overlays.",
+					Patch:       "# move helm: block to a dedicated source entry",
+					Path:        sourcePath,
+				},
+			}
+			findings = append(findings, finding)
+		}
+	}
 	return findings
 }
 
@@ -446,20 +487,198 @@ func ruleRecommendedLabels() Rule {
 		ID:              "AR010",
 		Description:     "Metadata should include app.kubernetes.io/name label",
 		DefaultSeverity: types.SeverityInfo,
-		AppliesTo:       []types.ResourceKind{types.ResourceKindApplication, types.ResourceKindApplicationSet},
-		Category:        "advisory",
-		Enabled:         true,
+		AppliesTo: []types.ResourceKind{
+			types.ResourceKindApplication,
+			types.ResourceKindApplicationSet,
+			types.ResourceKindAppProject,
+		},
+		Category: "advisory",
+		Enabled:  true,
 	}
 	return Rule{
 		Metadata: meta,
 		Applies:  func(m *manifest.Manifest) bool { return true },
 		Check: func(m *manifest.Manifest, ctx *Context, cfg types.ConfiguredRule) []types.Finding {
 			labels := getMap(m.Object, "metadata", "labels")
-			if _, ok := labels["app.kubernetes.io/name"]; ok {
-				return nil
-			}
+			annotations := getMap(m.Object, "metadata", "annotations")
 			builder := types.FindingBuilder{Rule: cfg, FilePath: m.FilePath, Line: m.MetadataLine, ResourceName: m.Name, ResourceKind: m.Kind}
-			return []types.Finding{builder.NewFinding("Add app.kubernetes.io/name label to metadata", types.SeverityInfo)}
+			var findings []types.Finding
+			if _, ok := labels["app.kubernetes.io/name"]; !ok {
+				finding := builder.NewFinding("Add app.kubernetes.io/name label to metadata", types.SeverityInfo)
+				finding.Suggestions = []types.Suggestion{
+					{
+						Title:       "Set app.kubernetes.io/name label",
+						Description: "Use the canonical application name for consistent ownership.",
+						Patch:       "metadata:\n  labels:\n    app.kubernetes.io/name: <name>",
+						Path:        "$.metadata.labels",
+					},
+				}
+				findings = append(findings, finding)
+			}
+			if managedBy, ok := labels["app.kubernetes.io/managed-by"]; !ok || managedBy != "argocd" {
+				finding := builder.NewFinding("Set app.kubernetes.io/managed-by=argocd label", types.SeverityInfo)
+				finding.Suggestions = []types.Suggestion{
+					{
+						Title:       "Label resources as managed by Argo CD",
+						Description: "Set app.kubernetes.io/managed-by to 'argocd' for tooling consistency.",
+						Patch:       "metadata:\n  labels:\n    app.kubernetes.io/managed-by: argocd",
+						Path:        "$.metadata.labels",
+					},
+				}
+				findings = append(findings, finding)
+			}
+			if _, ok := labels["argocd.argoproj.io/owner"]; !ok {
+				if _, annOk := annotations["argocd.argoproj.io/owner"]; !annOk {
+					finding := builder.NewFinding("Annotate owner via argocd.argoproj.io/owner", types.SeverityInfo)
+					finding.Suggestions = []types.Suggestion{
+						{
+							Title:       "Specify responsible team",
+							Description: "Add argocd.argoproj.io/owner label or annotation to document ownership.",
+							Patch:       "metadata:\n  annotations:\n    argocd.argoproj.io/owner: <team>",
+							Path:        "$.metadata.annotations",
+						},
+					}
+					findings = append(findings, finding)
+				}
+			}
+			return findings
+		},
+	}
+}
+
+func ruleAppProjectGuardrails() Rule {
+	meta := types.RuleMetadata{
+		ID:              "AR012",
+		Description:     "AppProjects should scope allowed sources and destinations",
+		DefaultSeverity: types.SeverityWarn,
+		AppliesTo:       []types.ResourceKind{types.ResourceKindAppProject},
+		Category:        "governance",
+		Enabled:         true,
+	}
+	return Rule{
+		Metadata: meta,
+		Applies:  func(m *manifest.Manifest) bool { return m.Kind == string(types.ResourceKindAppProject) },
+		Check: func(m *manifest.Manifest, ctx *Context, cfg types.ConfiguredRule) []types.Finding {
+			builder := types.FindingBuilder{Rule: cfg, FilePath: m.FilePath, Line: m.MetadataLine, ResourceName: m.Name, ResourceKind: m.Kind}
+			var findings []types.Finding
+
+			namespaces := getSlice(m.Object, "spec", "sourceNamespaces")
+			if len(namespaces) == 0 {
+				finding := builder.NewFinding("spec.sourceNamespaces is empty; restrict allowed namespaces", types.SeverityWarn)
+				finding.Suggestions = []types.Suggestion{
+					{
+						Title:       "Define allowed source namespaces",
+						Description: "List namespaces that AppProject members may source from.",
+						Patch:       "spec:\n  sourceNamespaces:\n    - apps",
+						Path:        "$.spec.sourceNamespaces",
+					},
+				}
+				findings = append(findings, finding)
+			} else {
+				for _, raw := range namespaces {
+					if ns, ok := raw.(string); ok && ns == "*" {
+						finding := builder.NewFinding("spec.sourceNamespaces uses wildcard '*'; tighten namespace scope", types.SeverityWarn)
+						finding.Suggestions = []types.Suggestion{
+							{
+								Title:       "Replace wildcard namespace",
+								Description: "Set explicit namespace names in sourceNamespaces.",
+								Patch:       "- <namespace>",
+								Path:        "$.spec.sourceNamespaces[]",
+							},
+						}
+						findings = append(findings, finding)
+					}
+				}
+			}
+
+			repos := getSlice(m.Object, "spec", "sourceRepos")
+			for _, raw := range repos {
+				if repo, ok := raw.(string); ok {
+					if strings.ContainsAny(repo, "*") {
+						finding := builder.NewFinding("spec.sourceRepos entry allows wildcard; pin repositories explicitly", types.SeverityWarn)
+						finding.Suggestions = []types.Suggestion{
+							{
+								Title:       "List exact repository URL",
+								Description: "Replace wildcard entries with explicit repository URLs.",
+								Patch:       "- https://git.example.com/org/repo.git",
+								Path:        "$.spec.sourceRepos[]",
+							},
+						}
+						findings = append(findings, finding)
+					}
+				}
+			}
+
+			destinations := getSlice(m.Object, "spec", "destinations")
+			if len(destinations) == 0 {
+				finding := builder.NewFinding("spec.destinations is empty; declare allowed target clusters/namespaces", types.SeverityWarn)
+				finding.Suggestions = []types.Suggestion{
+					{
+						Title:       "Add destination entries",
+						Description: "List the clusters and namespaces AppProject may deploy to.",
+						Patch:       "spec:\n  destinations:\n    - namespace: apps\n      server: https://kubernetes.default.svc",
+						Path:        "$.spec.destinations",
+					},
+				}
+				findings = append(findings, finding)
+			}
+			for _, raw := range destinations {
+				dest, ok := raw.(map[string]interface{})
+				if !ok {
+					continue
+				}
+				namespace := strings.TrimSpace(getStringMap(dest, "namespace"))
+				if namespace == "" {
+					finding := builder.NewFinding("Destination missing namespace; specify exact namespace or '*'", types.SeverityWarn)
+					finding.Suggestions = []types.Suggestion{
+						{
+							Title:       "Set destination namespace",
+							Description: "Declare the namespace this destination permits.",
+							Patch:       "namespace: <namespace>",
+							Path:        "$.spec.destinations[]",
+						},
+					}
+					findings = append(findings, finding)
+				} else if namespace == "*" {
+					finding := builder.NewFinding("Destination namespace is wildcard '*'; prefer explicit namespaces", types.SeverityWarn)
+					finding.Suggestions = []types.Suggestion{
+						{
+							Title:       "Replace wildcard namespace",
+							Description: "Restrict destinations to known namespaces.",
+							Patch:       "namespace: <namespace>",
+							Path:        "$.spec.destinations[]",
+						},
+					}
+					findings = append(findings, finding)
+				}
+				server := strings.TrimSpace(getStringMap(dest, "server"))
+				name := strings.TrimSpace(getStringMap(dest, "name"))
+				if server == "" && name == "" {
+					finding := builder.NewFinding("Destination missing cluster selector; set server or name", types.SeverityWarn)
+					finding.Suggestions = []types.Suggestion{
+						{
+							Title:       "Provide cluster identifier",
+							Description: "Specify destination.server URL or destination.name for cluster selection.",
+							Patch:       "server: https://kubernetes.default.svc",
+							Path:        "$.spec.destinations[]",
+						},
+					}
+					findings = append(findings, finding)
+				} else if server == "*" {
+					finding := builder.NewFinding("Destination server wildcard '*'; scope clusters explicitly", types.SeverityWarn)
+					finding.Suggestions = []types.Suggestion{
+						{
+							Title:       "Replace wildcard server",
+							Description: "Use explicit destination.name or destination.server entries.",
+							Patch:       "server: https://kubernetes.default.svc",
+							Path:        "$.spec.destinations[]",
+						},
+					}
+					findings = append(findings, finding)
+				}
+			}
+
+			return findings
 		},
 	}
 }

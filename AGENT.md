@@ -16,5 +16,6 @@ This repository was bootstrapped with Copilot/Codex-style automation in mind. Wh
 6. Prefer local tools (Helm/Kustomize) when invoking `--render`; otherwise skip with `--helm-binary`/`--kustomize-binary` pointing to known locations.
 7. Do not remove or modify files under `.github/` without maintainer approval – они поддерживают issue/PR шаблоны.
 8. Перед коммитом очищайте локальные кеши Go (`rm -rf .gocache .gomodcache`) и не добавляйте их в git: `.gitignore` уже содержит эти пути.
+9. Ответы и размышления только на Русском языке.
 
 Thanks for helping keep the repository healthy!

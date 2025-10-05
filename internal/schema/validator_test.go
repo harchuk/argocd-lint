@@ -7,7 +7,7 @@ import (
 )
 
 func TestSchemaValidatorDetectsInvalidApplication(t *testing.T) {
-	validator, err := NewValidator()
+	validator, err := NewValidator("")
 	if err != nil {
 		t.Fatalf("new validator: %v", err)
 	}
@@ -41,7 +41,7 @@ func TestSchemaValidatorDetectsInvalidApplication(t *testing.T) {
 }
 
 func TestSchemaValidatorAcceptsValidApplicationSet(t *testing.T) {
-	validator, err := NewValidator()
+	validator, err := NewValidator("")
 	if err != nil {
 		t.Fatalf("new validator: %v", err)
 	}
@@ -90,5 +90,52 @@ func TestSchemaValidatorAcceptsValidApplicationSet(t *testing.T) {
 		if f.RuleID == "SCHEMA_APPLICATIONSET" {
 			t.Fatalf("expected valid ApplicationSet, got schema finding: %s", f.Message)
 		}
+	}
+}
+
+func TestSchemaValidatorSupportsVersionSelection(t *testing.T) {
+	versions := []string{"v2.8", "v2.9"}
+	for _, version := range versions {
+		validator, err := NewValidator(version)
+		if err != nil {
+			t.Fatalf("new validator for %s: %v", version, err)
+		}
+		m := &manifest.Manifest{
+			FilePath: "good.yaml",
+			Kind:     "Application",
+			Name:     "demo",
+			Object: map[string]interface{}{
+				"apiVersion": "argoproj.io/v1alpha1",
+				"kind":       "Application",
+				"metadata": map[string]interface{}{
+					"name": "demo",
+				},
+				"spec": map[string]interface{}{
+					"project": "workloads",
+					"destination": map[string]interface{}{
+						"server":    "https://kubernetes.default.svc",
+						"namespace": "demo",
+					},
+					"source": map[string]interface{}{
+						"repoURL":        "https://example.com/repo.git",
+						"targetRevision": "v1.0.0",
+						"path":           "manifests",
+					},
+				},
+			},
+		}
+		findings, err := validator.Validate(m)
+		if err != nil {
+			t.Fatalf("validate %s: %v", version, err)
+		}
+		if len(findings) != 0 {
+			t.Fatalf("expected no findings for version %s, got %d", version, len(findings))
+		}
+	}
+}
+
+func TestSchemaValidatorRejectsUnknownVersion(t *testing.T) {
+	if _, err := NewValidator("v9.9"); err == nil {
+		t.Fatalf("expected error for unsupported version")
 	}
 }

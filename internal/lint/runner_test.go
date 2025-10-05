@@ -26,6 +26,9 @@ metadata:
   name: demo
   labels:
     app.kubernetes.io/name: demo
+    app.kubernetes.io/managed-by: argocd
+  annotations:
+    argocd.argoproj.io/owner: platform-team
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -51,7 +54,7 @@ spec:
 		},
 	}
 
-	runner, err := NewRunner(cfg, dir)
+	runner, err := NewRunner(cfg, dir, "")
 	if err != nil {
 		t.Fatalf("new runner: %v", err)
 	}
@@ -83,7 +86,7 @@ spec:
 	writeManifest(t, dir, "app1.yaml", manifest)
 	writeManifest(t, dir, "app2.yaml", manifest)
 
-	runner, err := NewRunner(config.Config{}, dir)
+	runner, err := NewRunner(config.Config{}, dir, "")
 	if err != nil {
 		t.Fatalf("new runner: %v", err)
 	}
@@ -124,7 +127,7 @@ spec:
 	if err := os.WriteFile(script, []byte("#!/bin/sh\nexit 3\n"), 0o755); err != nil {
 		t.Fatalf("write script: %v", err)
 	}
-	runner, err := NewRunner(config.Config{}, dir)
+	runner, err := NewRunner(config.Config{}, dir, "")
 	if err != nil {
 		t.Fatalf("new runner: %v", err)
 	}

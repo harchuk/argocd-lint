@@ -14,6 +14,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - GHCR container image built and published for each release.
 - Optional dry-run validation (`--dry-run=kubeconform|server`) with findings.
 - Rego plugin adapter with `--plugin` / `--plugin-dir` CLI flags and sample policy.
+- AppProject guardrails plus stricter source/label checks for Applications and ApplicationSets.
+- `--argocd-version` flag to pin schema validation to bundled Argo CD CRD versions with compatibility tests.
 
 ### Changed
 - Strengthened schema validation (Kubernetes-compliant names, richer source checks).

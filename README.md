@@ -1,7 +1,7 @@
 # argocd-lint
 
-[![CI](https://github.com/argocd-lint/argocd-lint/actions/workflows/ci.yaml/badge.svg)](https://github.com/argocd-lint/argocd-lint/actions/workflows/ci.yaml)
-[![Release](https://github.com/argocd-lint/argocd-lint/actions/workflows/release.yaml/badge.svg)](https://github.com/argocd-lint/argocd-lint/actions/workflows/release.yaml)
+[![CI]](https://github.com/argocd-lint/argocd-lint/actions/workflows/ci.yaml)
+[![Release]](https://github.com/argocd-lint/argocd-lint/actions/workflows/release.yaml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 ![argocd-lint ready badge](docs/assets/badge.svg)
 
@@ -45,6 +45,7 @@
 - **Policy plugins** – load custom Rego rules or curated bundles with `--plugin` / `--plugin-dir`.
 - **Integrations** – ready-to-use pre-commit hook, CI workflows, and SARIF upload recipe.
 - **Single binary** – no runtime dependencies; ideal for Git hooks and build agents.
+- **Version-aware validation** – pin CRD schemas to an Argo CD release via `--argocd-version`.
 
 ### Why platform teams ship it
 
@@ -130,6 +131,16 @@ argocd-lint ./apps \
 ```
 
 Rendering failures surface as `RENDER_HELM` or `RENDER_KUSTOMIZE` findings and respect your rule overrides.
+
+### Schema pinning
+
+Match validation to the Argo CD control-plane version:
+
+```bash
+argocd-lint ./apps --argocd-version=v2.8
+```
+
+If omitted, the latest bundled CRDs are used.
 
 ### Policy plugins
 

@@ -28,7 +28,9 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 	format := flags.String("format", "table", "Output format: table|json|sarif")
 	includeApps := flags.Bool("apps", true, "Include Application manifests")
 	includeAppSets := flags.Bool("appsets", true, "Include ApplicationSet manifests")
+	includeProjects := flags.Bool("projects", true, "Include AppProject manifests")
 	severityThreshold := flags.String("severity-threshold", "", "Exit with non-zero status at or above this severity (info|warn|error); overrides config")
+	argocdVersion := flags.String("argocd-version", "", "Pin schema validation to a specific Argo CD version (e.g. v2.8)")
 	renderEnabled := flags.Bool("render", false, "Render Helm/Kustomize sources before linting")
 	helmBinary := flags.String("helm-binary", "helm", "Helm binary to use for rendering")
 	kustomizeBinary := flags.String("kustomize-binary", "kustomize", "Kustomize binary to use for rendering")
@@ -81,7 +83,7 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
-	runner, err := lint.NewRunner(cfg, wd)
+	runner, err := lint.NewRunner(cfg, wd, *argocdVersion)
 	if err != nil {
 		printError(stderr, "runner", err)
 		return 2
@@ -150,6 +152,7 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 		Target:                 target,
 		IncludeApplications:    *includeApps,
 		IncludeApplicationSets: *includeAppSets,
+		IncludeProjects:        *includeProjects,
 		Config:                 cfg,
 		WorkingDir:             wd,
 		Render:                 renderOpts,

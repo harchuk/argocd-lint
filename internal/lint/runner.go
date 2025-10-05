@@ -22,6 +22,7 @@ type Options struct {
 	Target                 string
 	IncludeApplications    bool
 	IncludeApplicationSets bool
+	IncludeProjects        bool
 	Config                 config.Config
 	WorkingDir             string
 	Render                 render.Options
@@ -37,27 +38,29 @@ type Report struct {
 
 // Runner orchestrates parsing, validation, and rule checks.
 type Runner struct {
-	parser  manifest.Parser
-	rules   []rule.Rule
-	schema  *schema.Validator
-	cfg     config.Config
-	workdir string
-	plugins *plugin.Registry
+	parser        manifest.Parser
+	rules         []rule.Rule
+	schema        *schema.Validator
+	cfg           config.Config
+	workdir       string
+	plugins       *plugin.Registry
+	schemaVersion string
 }
 
 // NewRunner creates a Runner with the provided configuration.
-func NewRunner(cfg config.Config, workdir string) (*Runner, error) {
-	validator, err := schema.NewValidator()
+func NewRunner(cfg config.Config, workdir, schemaVersion string) (*Runner, error) {
+	validator, err := schema.NewValidator(schemaVersion)
 	if err != nil {
 		return nil, err
 	}
 	return &Runner{
-		parser:  manifest.Parser{},
-		rules:   rule.DefaultRules(),
-		schema:  validator,
-		cfg:     cfg,
-		workdir: workdir,
-		plugins: plugin.NewRegistry(),
+		parser:        manifest.Parser{},
+		rules:         rule.DefaultRules(),
+		schema:        validator,
+		cfg:           cfg,
+		workdir:       workdir,
+		plugins:       plugin.NewRegistry(),
+		schemaVersion: schemaVersion,
 	}, nil
 }
 
@@ -74,9 +77,10 @@ func (r *Runner) Run(opts Options) (Report, error) {
 	if opts.Target == "" {
 		return Report{}, fmt.Errorf("no target specified")
 	}
-	if !opts.IncludeApplications && !opts.IncludeApplicationSets {
+	if !opts.IncludeApplications && !opts.IncludeApplicationSets && !opts.IncludeProjects {
 		opts.IncludeApplications = true
 		opts.IncludeApplicationSets = true
+		opts.IncludeProjects = true
 	}
 	files, err := loader.DiscoverFiles(opts.Target)
 	if err != nil {
@@ -95,7 +99,7 @@ func (r *Runner) Run(opts Options) (Report, error) {
 		if m == nil {
 			continue
 		}
-		if includeManifest(m, opts.IncludeApplications, opts.IncludeApplicationSets) {
+		if includeManifest(m, opts.IncludeApplications, opts.IncludeApplicationSets, opts.IncludeProjects) {
 			if r.workdir != "" {
 				if rel, err := filepath.Rel(r.workdir, m.FilePath); err == nil {
 					m.FilePath = rel
@@ -241,12 +245,14 @@ func (r *Runner) Run(opts Options) (Report, error) {
 	return Report{Findings: findings, RuleIndex: ruleIndex}, nil
 }
 
-func includeManifest(m *manifest.Manifest, apps, appsets bool) bool {
+func includeManifest(m *manifest.Manifest, apps, appsets, projects bool) bool {
 	switch m.Kind {
 	case string(types.ResourceKindApplication):
 		return apps
 	case string(types.ResourceKindApplicationSet):
 		return appsets
+	case string(types.ResourceKindAppProject):
+		return projects
 	default:
 		return false
 	}

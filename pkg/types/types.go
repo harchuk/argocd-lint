@@ -22,6 +22,7 @@ type ResourceKind string
 const (
 	ResourceKindApplication    ResourceKind = "Application"
 	ResourceKindApplicationSet ResourceKind = "ApplicationSet"
+	ResourceKindAppProject     ResourceKind = "AppProject"
 )
 
 // Finding represents a lint rule result.

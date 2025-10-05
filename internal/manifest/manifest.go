@@ -94,7 +94,7 @@ func parseNode(path string, index int, node *yaml.Node) (*Manifest, error) {
 
 func isSupported(kind, apiVersion string) bool {
 	switch kind {
-	case string(types.ResourceKindApplication), string(types.ResourceKindApplicationSet):
+	case string(types.ResourceKindApplication), string(types.ResourceKindApplicationSet), string(types.ResourceKindAppProject):
 		return apiVersion == "argoproj.io/v1alpha1"
 	default:
 		return false
