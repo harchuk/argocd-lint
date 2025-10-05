@@ -29,7 +29,6 @@ deny[f] {
 }
 
 has_prefix(name) {
-  some prefix
   prefix := approved_prefixes[_]
   startswith(name, prefix)
 }

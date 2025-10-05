@@ -6,9 +6,12 @@
 - Rego plugin adapter with CLI wiring to load external policies.
 - Documented repo-server integration and published a starter kit.
 - Established curated plugin bundles and packaging workflow.
+- Added bundle conformance tests to CI to guard curated policies.
+- Expanded the policy catalogue with a security-focused bundle.
 
 ## Upcoming Enhancements
 
-- **Bundle conformance tests**: validate curated and third-party bundles in CI.
-- **Policy catalogue**: grow the library of supported bundles with
-  security-focused and compliance-oriented rules.
+- **Community bundle submissions**: document contribution guidelines and review
+  process for third-party rules.
+- **Policy metadata explorer**: surface bundle and rule metadata in the CLI for
+  easy discoverability (`argocd-lint plugins list`).

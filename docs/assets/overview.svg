@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="320" role="img" aria-labelledby="title desc">
+  <title id="title">argocd-lint overview</title>
+  <desc id="desc">Diagram showing git sources flowing through argocd-lint towards Argo CD</desc>
+  <rect width="720" height="320" fill="#0f172a" rx="24" />
+  <g font-family="'JetBrains Mono', 'Fira Mono', monospace" font-size="18" fill="#e2e8f0">
+    <text x="48" y="70">Git repo</text>
+    <text x="48" y="100">(Application &amp; ApplicationSet manifests)</text>
+    <text x="282" y="70">argocd-lint</text>
+    <text x="282" y="100">schema validation + rules + plugins</text>
+    <text x="540" y="70">Argo CD</text>
+    <text x="540" y="100">cluster-safe deployments</text>
+  </g>
+  <g stroke="#38bdf8" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="32" y="40" width="200" height="120" rx="16" />
+    <rect x="264" y="40" width="200" height="120" rx="16" />
+    <rect x="496" y="40" width="200" height="120" rx="16" />
+    <path d="M232 100 H252" marker-end="url(#arrow)" />
+    <path d="M464 100 H484" marker-end="url(#arrow)" />
+  </g>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#38bdf8" />
+    </marker>
+  </defs>
+  <g font-family="'Inter', 'Helvetica', sans-serif" font-size="14" fill="#94a3b8">
+    <text x="32" y="200">Run locally • CI pipelines • Repo-server CMP</text>
+    <text x="32" y="228">Extend with curated Rego bundles or custom policies</text>
+  </g>
+</svg>

@@ -99,6 +99,12 @@ Policies inside `bundles/core/` enforce naming prefixes and required ownership
 labels. Update the bundled Rego modules to match your organisation before
 shipping them broadly.
 
+#### Security bundle
+
+Located at `bundles/security/`, these rules focus on HTTPS destinations and Git
+repositories served over secure transports. Combine them with the core bundle or
+extend them with organisation-specific controls.
+
 ### Repo-server integration
 
 To run the same policies inside Argo CD, follow the starter kit in

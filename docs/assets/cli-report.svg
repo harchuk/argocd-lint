@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="320" role="img" aria-labelledby="title desc">
+  <title id="title">argocd-lint CLI report</title>
+  <desc id="desc">Stylised terminal output showing findings</desc>
+  <rect width="720" height="320" fill="#0b1120" rx="16" />
+  <rect x="24" y="32" width="672" height="256" rx="12" fill="#111b2e" stroke="#1d2a44" />
+  <g font-family="'JetBrains Mono', 'Fira Mono', monospace" font-size="14" fill="#38bdf8">
+    <text x="48" y="72">$ argocd-lint apps --format table</text>
+  </g>
+  <g font-family="'JetBrains Mono', 'Fira Mono', monospace" font-size="13" fill="#cbd5f5">
+    <text x="48" y="108">FILE                  LINE  RULE        SEVERITY  MESSAGE</text>
+    <text x="48" y="132" fill="#f87171">apps/prod.yaml        41    RGS001      error     destination.server must use https://</text>
+    <text x="48" y="156" fill="#fbbf24">apps/prod.yaml        12    AR007       warn      tighten ignoreDifferences for prod</text>
+    <text x="48" y="180" fill="#38bdf8">bundles/core/demo     1     RG100       info      team prefix missing (custom rule)</text>
+  </g>
+  <g font-family="'Inter', 'Helvetica', sans-serif" font-size="14" fill="#94a3b8">
+    <text x="48" y="220">Threshold: warn • Findings: 3 • Exit code: 1</text>
+  </g>
+</svg>

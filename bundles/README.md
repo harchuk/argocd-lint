@@ -7,6 +7,7 @@ tarball and upload it as an additional asset.
 ## Structure
 
 - `core/` – default bundle recommended for most teams.
+- `security/` – transport security and Git source hardening policies.
 
 Additional bundle folders can be added to target specific platforms or
 environments.

@@ -10,6 +10,8 @@
 > - Wire the same guardrails into CI, pre-commit, or Argo CD repo-server.
 > - Extend the rulebook with curated or custom Rego plugins.
 
+![argocd-lint overview](docs/assets/overview.svg)
+
 ## At a glance
 
 | Task | Command or resource |
@@ -43,6 +45,13 @@
 - **Integrations** – ready-to-use pre-commit hook, CI workflows, and SARIF upload recipe.
 - **Single binary** – no runtime dependencies; ideal for Git hooks and build agents.
 
+### Why platform teams ship it
+
+- **Predictable syncs** – block risky manifests before Argo CD applies them.
+- **Shared guardrails** – reuse the same policy bundles locally, in CI, and in repo-server.
+- **Fast feedback loop** – sub-second linting for typical app directories.
+- **Batteries included** – curated bundles plus a plugin API for everything else.
+
 ## Installation
 
 Choose the method that best fits your workflow:
@@ -70,7 +79,7 @@ argocd-lint --version
 Pick the workflow that matches your day-to-day routine:
 
 - **Code review gate** – `argocd-lint ./apps --severity-threshold=warn`
-- **ApplicationSet only** – `argocd-lint ./clusters --appsets`
+- **ApplicationSet only** – `argocd-lint ./clusters --apps=false --appsets`
 - **Render and lint Helm charts** –
   ```bash
   argocd-lint ./clusters \
@@ -78,6 +87,8 @@ Pick the workflow that matches your day-to-day routine:
     --helm-binary=$(which helm)
   ```
 - **Embed in repo-server** – follow [`examples/repo-server-plugin`](examples/repo-server-plugin/README.md)
+
+![argocd-lint CLI report](docs/assets/cli-report.svg)
 
 ## Configuration
 
@@ -134,6 +145,11 @@ Each plugin exports metadata (rule id, default severity, category) and a `deny` 
 > Tip: curated bundles live in `bundles/`. Package them for air-gapped
 > environments with `./scripts/package-plugin-bundles.sh` and mount them into CI
 > runners or repo-server sidecars.
+
+#### Bundle catalogue
+
+- **Core** – consistent naming and ownership labels (`bundles/core/`).
+- **Security** – HTTPS destinations and secure Git transport (`bundles/security/`).
 
 ### API validation (dry-run)
 
