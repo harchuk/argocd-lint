@@ -2,10 +2,12 @@ package rego
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	opaast "github.com/open-policy-agent/opa/ast"
@@ -166,16 +168,16 @@ func loadFile(ctx context.Context, path string) (plugin.RulePlugin, error) {
 		return nil, fmt.Errorf("parse module: %w", err)
 	}
 
-	compiler, err := opaast.CompileModules(map[string]*opaast.Module{path: module})
+	compiler, err := opaast.CompileModules(map[string]string{path: string(source)})
 	if err != nil {
 		return nil, fmt.Errorf("compile module: %w", err)
 	}
 
-	pkgPath := strings.Join(module.Package.Path.Strings(), ".")
+	pkgRef := module.Package.Path.String()
 
 	metadataQuery, err := rego.New(
 		rego.Compiler(compiler),
-		rego.Query(fmt.Sprintf("data.%s.metadata", pkgPath)),
+		rego.Query(fmt.Sprintf("%s.metadata", pkgRef)),
 	).PrepareForEval(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("prepare metadata query: %w", err)
@@ -183,7 +185,7 @@ func loadFile(ctx context.Context, path string) (plugin.RulePlugin, error) {
 
 	denyQuery, err := rego.New(
 		rego.Compiler(compiler),
-		rego.Query(fmt.Sprintf("data.%s.deny", pkgPath)),
+		rego.Query(fmt.Sprintf("%s.deny", pkgRef)),
 	).PrepareForEval(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("prepare deny query: %w", err)
@@ -193,7 +195,7 @@ func loadFile(ctx context.Context, path string) (plugin.RulePlugin, error) {
 	if hasRule(module, "applies") {
 		prepared, err := rego.New(
 			rego.Compiler(compiler),
-			rego.Query(fmt.Sprintf("data.%s.applies", pkgPath)),
+			rego.Query(fmt.Sprintf("%s.applies", pkgRef)),
 		).PrepareForEval(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("prepare applies query: %w", err)
@@ -303,8 +305,6 @@ func toStringMap(val interface{}) (map[string]interface{}, error) {
 	switch typed := val.(type) {
 	case map[string]interface{}:
 		return typed, nil
-	case map[string]any:
-		return map[string]interface{}(typed), nil
 	default:
 		return nil, fmt.Errorf("finding must be object, got %T", val)
 	}
@@ -363,10 +363,34 @@ func numberToInt(value interface{}) (int, bool) {
 		return v, true
 	case int64:
 		return int(v), true
+	case int32:
+		return int(v), true
+	case int16:
+		return int(v), true
+	case int8:
+		return int(v), true
+	case uint:
+		return int(v), true
+	case uint64:
+		return int(v), true
+	case uint32:
+		return int(v), true
+	case uint16:
+		return int(v), true
+	case uint8:
+		return int(v), true
 	case float64:
 		return int(v), true
 	case float32:
 		return int(v), true
+	case json.Number:
+		if i, err := strconv.Atoi(v.String()); err == nil {
+			return i, true
+		}
+		if f, err := v.Float64(); err == nil {
+			return int(f), true
+		}
+		return 0, false
 	default:
 		return 0, false
 	}
