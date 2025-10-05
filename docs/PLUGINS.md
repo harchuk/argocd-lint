@@ -81,8 +81,26 @@ argocd-lint ./manifests \
 
 The loader recursively discovers `.rego` files in the supplied directories. Plugins participate in configuration overrides just like built-in rules, so you can tweak severities through the standard `rules` and `overrides` sections.
 
+### Curated bundles
+
+Maintained bundles live in `bundles/`. Package them for distribution with:
+
+```bash
+./scripts/package-plugin-bundles.sh dist
+```
+
+The archives can be attached to GitHub releases or baked into container images
+for offline environments. The core bundle includes opinionated naming and
+metadata checks that complement the built-in rule set.
+
+### Repo-server integration
+
+To run the same policies inside Argo CD, follow the starter kit in
+`examples/repo-server-plugin/` and the detailed walkthrough in
+`docs/REPO_SERVER.md`. The Config Management Plugin publishes lint findings as
+part of the repo-server sync, blocking promotion when violations are detected.
+
 ### Roadmap
 
-1. Provide an optional plugin bundle within the release artifacts.
-2. Document repo-server integration patterns and publish a starter kit.
-3. Add conformance tests that validate third-party plugin bundles.
+1. Add conformance tests that validate third-party plugin bundles.
+2. Expand curated bundles with security and policy-as-code rules contributed by the community.

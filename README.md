@@ -12,7 +12,7 @@
 - **Rule engine** – ships with opinionated best-practice checks and per-rule severity overrides.
 - **Flexible output** – table (interactive), JSON (automation), and SARIF (GitHub Code Scanning).
 - **Optional rendering** – Helm/Kustomize rendering and findings via `--render`.
-- **Policy plugins** – load custom Rego rules with `--plugin` / `--plugin-dir`.
+- **Policy plugins** – load custom Rego rules or curated bundles with `--plugin` / `--plugin-dir`.
 - **Integrations** – ready-to-use pre-commit hook, CI workflows, and SARIF upload recipe.
 - **Single binary** – no runtime dependencies; ideal for Git hooks and build agents.
 
@@ -106,6 +106,11 @@ argocd-lint ./apps \
 ```
 
 Each plugin exports metadata (rule id, default severity, category) and a `deny` rule that returns findings. See [docs/PLUGINS.md](docs/PLUGINS.md) for the schema and authoring guide.
+
+Curated bundles live in `bundles/`, and you can package them for air-gapped
+environments with `./scripts/package-plugin-bundles.sh`. To enforce the same
+policies inside Argo CD, follow the repo-server starter kit in
+[docs/REPO_SERVER.md](docs/REPO_SERVER.md).
 
 ### API validation (dry-run)
 
