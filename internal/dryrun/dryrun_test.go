@@ -18,8 +18,8 @@ func TestKubeconformFailureProducesFinding(t *testing.T) {
 		t.Fatalf("write script: %v", err)
 	}
 	val := NewValidator(config.Config{}, workdir, Options{Enabled: true, Mode: modeKubeconform, KubeconformBinary: script})
-	manifest := &manifest.Manifest{FilePath: "app.yaml", Kind: string(types.ResourceKindApplication), Name: "demo"}
-	findings, err := val.Validate(context.Background(), []*manifest.Manifest{manifest})
+	app := &manifest.Manifest{FilePath: "app.yaml", Kind: string(types.ResourceKindApplication), Name: "demo"}
+	findings, err := val.Validate(context.Background(), []*manifest.Manifest{app})
 	if err != nil {
 		t.Fatalf("validate: %v", err)
 	}
@@ -38,8 +38,8 @@ func TestKubeconformSuccess(t *testing.T) {
 		t.Fatalf("write script: %v", err)
 	}
 	val := NewValidator(config.Config{}, workdir, Options{Enabled: true, Mode: modeKubeconform, KubeconformBinary: script})
-	manifest := &manifest.Manifest{FilePath: "app.yaml", Kind: string(types.ResourceKindApplication), Name: "demo"}
-	findings, err := val.Validate(context.Background(), []*manifest.Manifest{manifest})
+	app := &manifest.Manifest{FilePath: "app.yaml", Kind: string(types.ResourceKindApplication), Name: "demo"}
+	findings, err := val.Validate(context.Background(), []*manifest.Manifest{app})
 	if err != nil {
 		t.Fatalf("validate: %v", err)
 	}
@@ -55,8 +55,8 @@ func TestKubectlFailureProducesFinding(t *testing.T) {
 		t.Fatalf("write script: %v", err)
 	}
 	val := NewValidator(config.Config{}, workdir, Options{Enabled: true, Mode: modeServer, KubectlBinary: script})
-	manifest := &manifest.Manifest{FilePath: filepath.Join(workdir, "app.yaml"), Kind: string(types.ResourceKindApplication), Name: "demo"}
-	findings, err := val.Validate(context.Background(), []*manifest.Manifest{manifest})
+	app := &manifest.Manifest{FilePath: filepath.Join(workdir, "app.yaml"), Kind: string(types.ResourceKindApplication), Name: "demo"}
+	findings, err := val.Validate(context.Background(), []*manifest.Manifest{app})
 	if err != nil {
 		t.Fatalf("validate: %v", err)
 	}
@@ -75,8 +75,8 @@ func TestKubectlSuccess(t *testing.T) {
 		t.Fatalf("write script: %v", err)
 	}
 	val := NewValidator(config.Config{}, workdir, Options{Enabled: true, Mode: modeServer, KubectlBinary: script})
-	manifest := &manifest.Manifest{FilePath: "app.yaml", Kind: string(types.ResourceKindApplication), Name: "demo"}
-	findings, err := val.Validate(context.Background(), []*manifest.Manifest{manifest})
+	app := &manifest.Manifest{FilePath: "app.yaml", Kind: string(types.ResourceKindApplication), Name: "demo"}
+	findings, err := val.Validate(context.Background(), []*manifest.Manifest{app})
 	if err != nil {
 		t.Fatalf("validate: %v", err)
 	}
