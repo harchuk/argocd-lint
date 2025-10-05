@@ -55,6 +55,13 @@ func TestResolveWithOverrides(t *testing.T) {
 	}
 }
 
+func TestConfigThreshold(t *testing.T) {
+	cfg := Config{Threshold: "warn"}
+	if cfg.Threshold != "warn" {
+		t.Fatalf("expected threshold warn, got %s", cfg.Threshold)
+	}
+}
+
 func TestParseSeverityErrors(t *testing.T) {
 	if sev, err := ParseSeverity("critical"); err == nil {
 		t.Fatalf("expected error on unknown severity")

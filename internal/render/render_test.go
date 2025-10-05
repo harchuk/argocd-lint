@@ -9,11 +9,40 @@ import (
 	"github.com/argocd-lint/argocd-lint/internal/manifest"
 )
 
-func TestRenderHelmFailureProducesFinding(t *testing.T) {
+func fakeManifest(kind string) *manifest.Manifest {
+	return &manifest.Manifest{
+		FilePath:     "app.yaml",
+		Kind:         kind,
+		Name:         "demo",
+		MetadataLine: 1,
+		Object: map[string]interface{}{
+			"spec": map[string]interface{}{
+				"project": "workloads",
+				"destination": map[string]interface{}{
+					"namespace": "demo",
+				},
+				"source": map[string]interface{}{
+					"repoURL":        "https://example.com/repo.git",
+					"targetRevision": "v1.0.0",
+					"path":           "chart",
+				},
+			},
+		},
+	}
+}
+
+func shPath() string {
+	if p, err := filepath.Abs("/bin/sh"); err == nil {
+		return p
+	}
+	return "sh"
+}
+
+func TestRendererHelmFailure(t *testing.T) {
 	dir := t.TempDir()
 	chartDir := filepath.Join(dir, "chart")
 	if err := os.Mkdir(chartDir, 0o755); err != nil {
-		t.Fatalf("make chart dir: %v", err)
+		t.Fatalf("mkdir: %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(chartDir, "Chart.yaml"), []byte("apiVersion: v2\nname: demo\nversion: 0.1.0\n"), 0o600); err != nil {
 		t.Fatalf("write chart: %v", err)
@@ -22,27 +51,14 @@ func TestRenderHelmFailureProducesFinding(t *testing.T) {
 	cfg := config.Config{}
 	renderer, err := NewRenderer(cfg, Options{
 		Enabled:    true,
-		HelmBinary: "false",
+		HelmBinary: shPath(),
 		RepoRoot:   dir,
 	})
 	if err != nil {
 		t.Fatalf("new renderer: %v", err)
 	}
 
-	manifest := &manifest.Manifest{
-		FilePath:     "app.yaml",
-		Kind:         "Application",
-		Name:         "demo",
-		MetadataLine: 1,
-		Object: map[string]interface{}{
-			"spec": map[string]interface{}{
-				"source": map[string]interface{}{
-					"path": "chart",
-				},
-			},
-		},
-	}
-
+	manifest := fakeManifest("Application")
 	findings, err := renderer.Render(manifest)
 	if err != nil {
 		t.Fatalf("render: %v", err)
@@ -55,20 +71,16 @@ func TestRenderHelmFailureProducesFinding(t *testing.T) {
 	}
 }
 
-func TestRenderSkipsWhenDisabled(t *testing.T) {
-	cfg := config.Config{}
-	renderer, err := NewRenderer(cfg, Options{})
+func TestRendererDisabled(t *testing.T) {
+	renderer, err := NewRenderer(config.Config{}, Options{Enabled: false})
 	if err != nil {
 		t.Fatalf("new renderer: %v", err)
 	}
-	manifest := &manifest.Manifest{
-		Kind: "Application",
-	}
-	findings, err := renderer.Render(manifest)
+	findings, err := renderer.Render(fakeManifest("Application"))
 	if err != nil {
 		t.Fatalf("render: %v", err)
 	}
 	if len(findings) != 0 {
-		t.Fatalf("expected no findings when renderer disabled")
+		t.Fatalf("expected no findings when disabled")
 	}
 }

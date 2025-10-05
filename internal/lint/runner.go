@@ -22,6 +22,7 @@ type Options struct {
 	Config                 config.Config
 	WorkingDir             string
 	Render                 render.Options
+	SeverityThreshold      string
 }
 
 // Report is the lint result collection.
@@ -158,6 +159,7 @@ func (r *Runner) Run(opts Options) (Report, error) {
 		return findings[i].FilePath < findings[j].FilePath
 	})
 
+	threshold := opts.SeverityThreshold
 	return Report{Findings: findings, RuleIndex: ruleIndex}, nil
 }
 

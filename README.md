@@ -65,6 +65,8 @@ rules:
   AR006:
     enabled: false       # disable finalizer guidance globally
 
+severityThreshold: warn  # default threshold for exit code (overridden by CLI flag)
+
 overrides:
   - pattern: "environments/prod/**"
     rules:
@@ -174,6 +176,7 @@ Helpful references:
 - [AGENT.md](AGENT.md) – guardrails for automation.
 - [CHANGELOG.md](CHANGELOG.md) – release notes history.
 - [docs/RELEASING.md](docs/RELEASING.md) – maintainer release guide.
+- [docs/PLUGINS.md](docs/PLUGINS.md) – roadmap for custom policy plug-ins.
 
 ## Roadmap
 

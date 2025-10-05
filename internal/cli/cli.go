@@ -24,7 +24,7 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 	format := flags.String("format", "table", "Output format: table|json|sarif")
 	includeApps := flags.Bool("apps", true, "Include Application manifests")
 	includeAppSets := flags.Bool("appsets", true, "Include ApplicationSet manifests")
-	severityThreshold := flags.String("severity-threshold", "error", "Exit with non-zero status at or above this severity (info|warn|error)")
+	severityThreshold := flags.String("severity-threshold", "", "Exit with non-zero status at or above this severity (info|warn|error); overrides config")
 	renderEnabled := flags.Bool("render", false, "Render Helm/Kustomize sources before linting")
 	helmBinary := flags.String("helm-binary", "helm", "Helm binary to use for rendering")
 	kustomizeBinary := flags.String("kustomize-binary", "kustomize", "Kustomize binary to use for rendering")
@@ -98,6 +98,11 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 		RepoRoot:        root,
 	}
 
+	threshold := cfg.Threshold
+	if *severityThreshold != "" {
+		threshold = *severityThreshold
+	}
+
 	opts := lint.Options{
 		Target:                 target,
 		IncludeApplications:    *includeApps,
@@ -105,6 +110,7 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 		Config:                 cfg,
 		WorkingDir:             wd,
 		Render:                 renderOpts,
+		SeverityThreshold:      threshold,
 	}
 
 	report, err := runner.Run(opts)
@@ -118,14 +124,18 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
-	threshold, err := config.ParseSeverity(*severityThreshold)
+	thresholdValue := opts.SeverityThreshold
+	if thresholdValue == "" {
+		thresholdValue = string(types.SeverityError)
+	}
+	thresholdSeverity, err := config.ParseSeverity(thresholdValue)
 	if err != nil {
 		fmt.Fprintf(stderr, "severity threshold error: %v\n", err)
 		return 2
 	}
 
 	highest := output.HighestSeverity(report.Findings)
-	if types.SeverityOrder[highest] >= types.SeverityOrder[threshold] && len(report.Findings) > 0 {
+	if types.SeverityOrder[highest] >= types.SeverityOrder[thresholdSeverity] && len(report.Findings) > 0 {
 		return 1
 	}
 

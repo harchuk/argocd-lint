@@ -27,6 +27,7 @@ type Override struct {
 type Config struct {
 	Rules     map[string]RuleConfig `yaml:"rules"`
 	Overrides []Override            `yaml:"overrides"`
+	Threshold string                `yaml:"severityThreshold"`
 }
 
 // Load reads configuration from file. Empty path returns defaults.
