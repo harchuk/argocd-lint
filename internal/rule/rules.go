@@ -2,6 +2,7 @@ package rule
 
 import (
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -36,6 +37,8 @@ func DefaultRules() []Rule {
 		ruleApplicationSetGoTemplateOptions(),
 		ruleSourceConsistency(),
 		ruleRecommendedLabels(),
+		ruleRepoURLPolicy(),
+		ruleProjectAccess(),
 		ruleAppProjectGuardrails(),
 	}
 }
@@ -546,6 +549,112 @@ func ruleRecommendedLabels() Rule {
 	}
 }
 
+func ruleRepoURLPolicy() Rule {
+	meta := types.RuleMetadata{
+		ID:              "AR013",
+		Description:     "source.repoURL must match approved protocols and domains",
+		DefaultSeverity: types.SeverityError,
+		AppliesTo:       []types.ResourceKind{types.ResourceKindApplication, types.ResourceKindApplicationSet},
+		Category:        "security",
+		Enabled:         true,
+	}
+	return Rule{
+		Metadata: meta,
+		Applies: func(m *manifest.Manifest) bool {
+			return m.Kind == string(types.ResourceKindApplication) || m.Kind == string(types.ResourceKindApplicationSet)
+		},
+		Check: func(m *manifest.Manifest, ctx *Context, cfg types.ConfiguredRule) []types.Finding {
+			policies := ctx.Config.Policies
+			allowedProtocols := normalizeList(policies.AllowedRepoURLProtocols)
+			allowedDomains := normalizeList(policies.AllowedRepoURLDomains)
+			if len(allowedProtocols) == 0 && len(allowedDomains) == 0 {
+				return nil
+			}
+			builder := types.FindingBuilder{Rule: cfg, FilePath: m.FilePath, Line: m.MetadataLine, ResourceName: m.Name, ResourceKind: m.Kind}
+			var findings []types.Finding
+			for _, repo := range collectRepoURLs(m) {
+				repo = strings.TrimSpace(repo)
+				if repo == "" {
+					continue
+				}
+				scheme, host := parseRepoURL(repo)
+				if len(allowedProtocols) > 0 && scheme != "" && !stringAllowed(scheme, allowedProtocols) {
+					msg := fmt.Sprintf("source.repoURL '%s' uses protocol '%s' (allowed: %s)", repo, scheme, strings.Join(allowedProtocols, ","))
+					findings = append(findings, builder.NewFinding(msg, cfg.Severity))
+					continue
+				}
+				if len(allowedProtocols) > 0 && scheme == "" && !stringAllowed("", allowedProtocols) {
+					msg := fmt.Sprintf("source.repoURL '%s' omits a protocol (allowed: %s)", repo, strings.Join(allowedProtocols, ","))
+					findings = append(findings, builder.NewFinding(msg, cfg.Severity))
+				}
+				if len(allowedDomains) > 0 {
+					if host == "" {
+						msg := fmt.Sprintf("source.repoURL '%s' has no host; cannot validate against domains (%s)", repo, strings.Join(allowedDomains, ","))
+						findings = append(findings, builder.NewFinding(msg, cfg.Severity))
+						continue
+					}
+					if !domainAllowed(host, allowedDomains) {
+						msg := fmt.Sprintf("source.repoURL '%s' resolves to '%s' not allowed (%s)", repo, host, strings.Join(allowedDomains, ","))
+						findings = append(findings, builder.NewFinding(msg, cfg.Severity))
+					}
+				}
+			}
+			return findings
+		},
+	}
+}
+
+func ruleProjectAccess() Rule {
+	meta := types.RuleMetadata{
+		ID:              "AR014",
+		Description:     "Applications must reference existing AppProjects and stay within declared access scopes",
+		DefaultSeverity: types.SeverityError,
+		AppliesTo:       []types.ResourceKind{types.ResourceKindApplication, types.ResourceKindApplicationSet},
+		Category:        "governance",
+		Enabled:         true,
+	}
+	return Rule{
+		Metadata: meta,
+		Applies: func(m *manifest.Manifest) bool {
+			return m.Kind == string(types.ResourceKindApplication) || m.Kind == string(types.ResourceKindApplicationSet)
+		},
+		Check: func(m *manifest.Manifest, ctx *Context, cfg types.ConfiguredRule) []types.Finding {
+			projects := collectAppProjects(ctx.Manifests)
+			if len(projects) == 0 {
+				return nil
+			}
+			projectName, repos, dest := manifestProjectInfo(m)
+			if projectName == "" {
+				return nil
+			}
+			builder := types.FindingBuilder{Rule: cfg, FilePath: m.FilePath, Line: m.MetadataLine, ResourceName: m.Name, ResourceKind: m.Kind}
+			policy, ok := projects[projectName]
+			if !ok {
+				msg := fmt.Sprintf("AppProject '%s' not found; add manifest or adjust spec.project", projectName)
+				return []types.Finding{builder.NewFinding(msg, cfg.Severity)}
+			}
+			var findings []types.Finding
+			for _, repo := range repos {
+				repo = strings.TrimSpace(repo)
+				if repo == "" {
+					continue
+				}
+				if !repoAllowedByProject(repo, policy.SourceRepos) {
+					msg := fmt.Sprintf("source.repoURL '%s' is not permitted by AppProject '%s'", repo, projectName)
+					findings = append(findings, builder.NewFinding(msg, cfg.Severity))
+				}
+			}
+			if dest != nil {
+				if !destinationAllowedByProject(*dest, policy.Destinations) {
+					msg := fmt.Sprintf("destination not permitted by AppProject '%s'", projectName)
+					findings = append(findings, builder.NewFinding(msg, cfg.Severity))
+				}
+			}
+			return findings
+		},
+	}
+}
+
 func ruleAppProjectGuardrails() Rule {
 	meta := types.RuleMetadata{
 		ID:              "AR012",
@@ -747,6 +856,267 @@ func getString(obj map[string]interface{}, path ...string) string {
 		current = next
 	}
 	return ""
+}
+
+func normalizeList(values []string) []string {
+	var out []string
+	for _, v := range values {
+		trimmed := strings.ToLower(strings.TrimSpace(strings.TrimSuffix(strings.TrimSuffix(v, ":"), "://")))
+		if trimmed == "" {
+			continue
+		}
+		out = append(out, trimmed)
+	}
+	return out
+}
+
+func collectRepoURLs(m *manifest.Manifest) []string {
+	set := map[string]struct{}{}
+	add := func(url string) {
+		url = strings.TrimSpace(url)
+		if url == "" {
+			return
+		}
+		set[url] = struct{}{}
+	}
+	switch m.Kind {
+	case string(types.ResourceKindApplication):
+		source := getMap(m.Object, "spec", "source")
+		add(getStringMap(source, "repoURL"))
+		for _, raw := range getSlice(m.Object, "spec", "sources") {
+			if src, ok := raw.(map[string]interface{}); ok {
+				add(getStringMap(src, "repoURL"))
+			}
+		}
+	case string(types.ResourceKindApplicationSet):
+		templateSpec := getMap(m.Object, "spec", "template", "spec")
+		src := getMap(templateSpec, "source")
+		add(getStringMap(src, "repoURL"))
+		for _, raw := range getSlice(templateSpec, "sources") {
+			if srcMap, ok := raw.(map[string]interface{}); ok {
+				add(getStringMap(srcMap, "repoURL"))
+			}
+		}
+	}
+	urls := make([]string, 0, len(set))
+	for url := range set {
+		urls = append(urls, url)
+	}
+	return urls
+}
+
+func parseRepoURL(raw string) (scheme string, host string) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return "", ""
+	}
+	if parsed, err := url.Parse(trimmed); err == nil && parsed.Host != "" {
+		return strings.ToLower(parsed.Scheme), strings.ToLower(parsed.Hostname())
+	}
+	withoutUser := trimmed
+	if at := strings.LastIndex(trimmed, "@"); at != -1 {
+		withoutUser = trimmed[at+1:]
+	}
+	if idx := strings.Index(withoutUser, ":"); idx != -1 {
+		return "", strings.ToLower(withoutUser[:idx])
+	}
+	if strings.HasPrefix(withoutUser, "//") {
+		return "", strings.ToLower(strings.TrimPrefix(withoutUser, "//"))
+	}
+	return "", strings.ToLower(withoutUser)
+}
+
+func stringAllowed(value string, allowed []string) bool {
+	if len(allowed) == 0 {
+		return true
+	}
+	for _, item := range allowed {
+		if item == "*" {
+			return true
+		}
+		if value == item {
+			return true
+		}
+	}
+	return false
+}
+
+func domainAllowed(domain string, patterns []string) bool {
+	if len(patterns) == 0 {
+		return true
+	}
+	for _, pattern := range patterns {
+		if globMatch(pattern, domain) {
+			return true
+		}
+	}
+	return false
+}
+
+type projectPolicy struct {
+	SourceRepos  []string
+	Destinations []projectDestination
+}
+
+type projectDestination struct {
+	Server    string
+	Name      string
+	Namespace string
+}
+
+func collectAppProjects(manifests []*manifest.Manifest) map[string]projectPolicy {
+	projects := make(map[string]projectPolicy)
+	for _, m := range manifests {
+		if m == nil || m.Kind != string(types.ResourceKindAppProject) {
+			continue
+		}
+		spec := getMap(m.Object, "spec")
+		repos := sliceToStrings(getSlice(spec, "sourceRepos"))
+		if len(repos) == 0 {
+			repos = []string{"*"}
+		}
+		dests := make([]projectDestination, 0)
+		for _, raw := range getSlice(spec, "destinations") {
+			if dest, ok := raw.(map[string]interface{}); ok {
+				dests = append(dests, projectDestination{
+					Server:    strings.TrimSpace(getStringMap(dest, "server")),
+					Name:      strings.TrimSpace(getStringMap(dest, "name")),
+					Namespace: strings.TrimSpace(getStringMap(dest, "namespace")),
+				})
+			}
+		}
+		if len(dests) == 0 {
+			dests = append(dests, projectDestination{Server: "*", Namespace: "*", Name: "*"})
+		}
+		projects[m.Name] = projectPolicy{SourceRepos: repos, Destinations: dests}
+	}
+	return projects
+}
+
+func sliceToStrings(items []interface{}) []string {
+	var out []string
+	for _, item := range items {
+		if str, ok := item.(string); ok {
+			trimmed := strings.TrimSpace(str)
+			if trimmed != "" {
+				out = append(out, trimmed)
+			}
+		}
+	}
+	return out
+}
+
+func manifestProjectInfo(m *manifest.Manifest) (string, []string, *projectDestination) {
+	switch m.Kind {
+	case string(types.ResourceKindApplication):
+		project := strings.TrimSpace(getString(m.Object, "spec", "project"))
+		repos := collectRepoURLs(m)
+		destMap := getMap(m.Object, "spec", "destination")
+		dest := destinationFromMap(destMap)
+		return project, repos, dest
+	case string(types.ResourceKindApplicationSet):
+		project := appSetProjectName(m)
+		templateSpec := getMap(m.Object, "spec", "template", "spec")
+		repos := collectRepoURLs(m)
+		dest := destinationFromMap(getMap(templateSpec, "destination"))
+		return project, repos, dest
+	default:
+		return "", nil, nil
+	}
+}
+
+func appSetProjectName(m *manifest.Manifest) string {
+	candidates := []string{
+		getString(m.Object, "spec", "project"),
+		getString(m.Object, "spec", "template", "spec", "project"),
+		getString(m.Object, "spec", "applicationSpec", "project"),
+		getString(m.Object, "spec", "applicationCore", "project"),
+	}
+	for _, c := range candidates {
+		trimmed := strings.TrimSpace(c)
+		if trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
+}
+
+func destinationFromMap(dest map[string]interface{}) *projectDestination {
+	if len(dest) == 0 {
+		return nil
+	}
+	return &projectDestination{
+		Server:    strings.TrimSpace(getStringMap(dest, "server")),
+		Name:      strings.TrimSpace(getStringMap(dest, "name")),
+		Namespace: strings.TrimSpace(getStringMap(dest, "namespace")),
+	}
+}
+
+func repoAllowedByProject(repo string, patterns []string) bool {
+	if len(patterns) == 0 {
+		return true
+	}
+	repoLower := strings.ToLower(repo)
+	for _, pattern := range patterns {
+		pattern = strings.ToLower(strings.TrimSpace(pattern))
+		if pattern == "" {
+			continue
+		}
+		if globMatch(pattern, repoLower) {
+			return true
+		}
+	}
+	return false
+}
+
+func destinationAllowedByProject(dest projectDestination, allowed []projectDestination) bool {
+	for _, candidate := range allowed {
+		if matchDestinationField(dest.Namespace, candidate.Namespace) &&
+			matchDestinationField(dest.Server, candidate.Server) &&
+			matchDestinationField(dest.Name, candidate.Name) {
+			return true
+		}
+	}
+	return false
+}
+
+func matchDestinationField(value, pattern string) bool {
+	pattern = strings.TrimSpace(pattern)
+	if pattern == "" || pattern == "*" {
+		return true
+	}
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return false
+	}
+	return globMatch(strings.ToLower(pattern), strings.ToLower(value))
+}
+
+func globMatch(pattern, value string) bool {
+	pattern = strings.TrimSpace(pattern)
+	if pattern == "" {
+		return false
+	}
+	if pattern == "*" {
+		return true
+	}
+	var builder strings.Builder
+	for _, r := range pattern {
+		switch r {
+		case '*':
+			builder.WriteString(".*")
+		case '?':
+			builder.WriteString(".")
+		default:
+			builder.WriteString(regexp.QuoteMeta(string(r)))
+		}
+	}
+	regex := "^" + builder.String() + "$"
+	matched, err := regexp.MatchString(regex, value)
+	if err != nil {
+		return false
+	}
+	return matched
 }
 
 // UniqueNameFindings flags duplicate Application names across manifests.

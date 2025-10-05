@@ -28,6 +28,13 @@ type Config struct {
 	Rules     map[string]RuleConfig `yaml:"rules"`
 	Overrides []Override            `yaml:"overrides"`
 	Threshold string                `yaml:"severityThreshold"`
+	Policies  PolicyConfig          `yaml:"policies"`
+}
+
+// PolicyConfig captures additional governance settings.
+type PolicyConfig struct {
+	AllowedRepoURLProtocols []string `yaml:"allowedRepoURLProtocols"`
+	AllowedRepoURLDomains   []string `yaml:"allowedRepoURLDomains"`
 }
 
 // Load reads configuration from file. Empty path returns defaults.
