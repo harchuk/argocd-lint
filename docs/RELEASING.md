@@ -1,39 +1,40 @@
 # Releasing argocd-lint
 
-This guide documents the steps maintainers follow to publish a new release.
+Releases are generated automatically. Every push to the `main` branch runs the `Release` workflow, which:
 
-1. Update version metadata:
-   - Bump `Version` in `pkg/version/version.go`.
-   - Add release notes to `CHANGELOG.md` under a new section.
-2. Ensure dependencies are tidy:
-   ```bash
-   go mod tidy
-   ```
-3. Run the full validation suite locally:
-   ```bash
-   gofmt -w $(find . -name '*.go' -not -path './vendor/*')
-   go test ./...
-   make build
-   ./bin/argocd-lint examples/apps --render
-   ```
-4. Commit the changes and open a pull request. Wait for all GitHub Actions to succeed.
-5. Create a signed tag matching the new version (e.g., `v0.2.0`):
-   ```bash
-   git tag -s v0.2.0 -m "Release v0.2.0"
-   git push origin v0.2.0
-   ```
-6. The `Release` GitHub Action builds cross-platform binaries, calculates checksums, and drafts the GitHub release with artifacts.
-7. Verify the release notes and attach additional assets if required.
+1. Builds cross-platform binaries with the current commit SHA embedded in the version string.
+2. Publishes a GitHub Release whose tag is derived from the timestamp and short commit hash.
+3. Uploads the build artifacts and a checksum file to the release.
+4. Pushes a multi-architecture container image to GHCR (`ghcr.io/<owner>/<repo>/argocd-lint`).
 
-## Verifying binaries
+No manual tagging is required. As long as changes land on `main`, a fresh release and container image appear a few minutes later.
 
-Downloaded binaries can be verified with the published SHA-256 checksums. Example:
+## Development checklist before merging to main
+
+To keep published artifacts healthy, run through the usual checks before merging:
 
 ```bash
-shasum -a 256 argocd-lint-linux-amd64
+make check      # gofmt + go test
+make build      # local build sanity
+./bin/argocd-lint examples/apps --render
 ```
 
-## Post-release housekeeping
+Large feature releases can still include curated notes by editing `CHANGELOG.md` before merging; the automatic release body will reference the commit SHA, so the changelog remains the canonical place for human-readable notes.
 
-- Create an `[Unreleased]` header in `CHANGELOG.md` if missing.
-- Reset the default development version in `pkg/version/version.go` to the next snapshot (e.g., `0.2.1-dev`).
+## Verifying published assets
+
+After the workflow completes:
+
+- Inspect the new entry under GitHub Releases to confirm artifacts and `checksums.txt` are attached.
+- Pull the container image:
+  ```bash
+  docker pull ghcr.io/<owner>/<repo>/argocd-lint:<derived-version>
+  ```
+- Validate binary integrity when desired:
+  ```bash
+  shasum -a 256 argocd-lint-linux-amd64
+  ```
+
+## Manual reruns
+
+If a job in the release workflow fails, re-run it from the Actions tab. The workflow reuses the same version identifier for that commit, so the release and container tags remain consistent.
