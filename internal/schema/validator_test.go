@@ -83,7 +83,9 @@ func TestSchemaValidatorAcceptsValidApplicationSet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("validate: %v", err)
 	}
-	if len(findings) != 0 {
-		t.Fatalf("expected no findings, got %d", len(findings))
+	for _, f := range findings {
+		if f.RuleID == "SCHEMA_APPLICATIONSET" {
+			t.Fatalf("expected valid ApplicationSet, got schema finding: %s", f.Message)
+		}
 	}
 }

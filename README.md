@@ -102,23 +102,23 @@ Rendering failures surface as `RENDER_HELM` or `RENDER_KUSTOMIZE` findings and r
 
 ## Shipped rules
 
-| ID | Kind(s) | Default | Summary |
-| --- | --- | --- | --- |
-| AR001 | Application, ApplicationSet | warn | `targetRevision` must be pinned (no floating refs).
-| AR002 | Application, ApplicationSet | error | `spec.project` must not be empty or `default`.
-| AR003 | Application | error | Namespace destinations must declare `destination.namespace`.
-| AR004 | Application | warn | `syncPolicy` should explicitly choose automated/manual.
-| AR005 | Application | warn | Automated sync should enable `prune` and `selfHeal`.
-| AR006 | Application | info | Finalizer usage should be intentional.
-| AR007 | Application | warn | `ignoreDifferences` must remain tightly scoped.
-| AR008 | ApplicationSet | warn | Enable `missingkey=error` for Go templates.
-| AR009 | Application | error | Source definitions must be consistent (`path` vs `chart`).
-| AR010 | Application, ApplicationSet | info | Recommend `app.kubernetes.io/name` label.
-| AR011 | Application | error | Application names must be unique within a lint run.
-| SCHEMA_APPLICATION | Application | error | Built-in CRD schema validation.
-| SCHEMA_APPLICATIONSET | ApplicationSet | error | Built-in CRD schema validation.
-| RENDER_HELM | Application, ApplicationSet | error | `helm template` must succeed (`--render`).
-| RENDER_KUSTOMIZE | Application, ApplicationSet | error | `kustomize build` must succeed (`--render`).
+| ID | Kind(s) | Default | Category | Summary |
+| --- | --- | --- | --- | --- |
+| AR001 | Application, ApplicationSet | warn | Delivery | `targetRevision` must be pinned (no floating refs). |
+| AR002 | Application, ApplicationSet | error | Governance | `spec.project` must not be empty or `default`. |
+| AR003 | Application | error | Safety | Namespace destinations must declare `destination.namespace`. |
+| AR004 | Application | warn | Operations | `syncPolicy` should explicitly choose automated/manual. |
+| AR005 | Application | warn | Operations | Automated sync should enable `prune` and `selfHeal`. |
+| AR006 | Application | info | Safety | Finalizer usage should be intentional. |
+| AR007 | Application | warn | Drift | `ignoreDifferences` must remain tightly scoped. |
+| AR008 | ApplicationSet | warn | Delivery | Enable `missingkey=error` for Go templates. |
+| AR009 | Application | error | Delivery | Source definitions must be consistent (`path` vs `chart`). |
+| AR010 | Application, ApplicationSet | info | Observability | Recommend `app.kubernetes.io/name` label. |
+| AR011 | Application | error | Consistency | Application names must be unique within a lint run. |
+| SCHEMA_APPLICATION | Application | error | Compliance | Built-in CRD schema validation. |
+| SCHEMA_APPLICATIONSET | ApplicationSet | error | Compliance | Built-in CRD schema validation. |
+| RENDER_HELM | Application, ApplicationSet | error | Render | `helm template` must succeed (`--render`). |
+| RENDER_KUSTOMIZE | Application, ApplicationSet | error | Render | `kustomize build` must succeed (`--render`). |
 
 ## Integrations
 

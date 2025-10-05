@@ -1,0 +1,15 @@
+# test log
+getenv TMPDIR
+open /var/folders/5p/mbnd92dx63j73ljb_s630lyc0000gn/T/TestRunnerSuccessfulLint2948462148/001/app.yaml
+stat /var/folders/5p/mbnd92dx63j73ljb_s630lyc0000gn/T/TestRunnerSuccessfulLint2948462148/001/app.yaml
+open /var/folders/5p/mbnd92dx63j73ljb_s630lyc0000gn/T/TestRunnerSuccessfulLint2948462148/001/app.yaml
+open /var/folders/5p/mbnd92dx63j73ljb_s630lyc0000gn/T
+getenv TMPDIR
+open /var/folders/5p/mbnd92dx63j73ljb_s630lyc0000gn/T/TestRunnerDetectsDuplicateNames2204746964/001/app1.yaml
+open /var/folders/5p/mbnd92dx63j73ljb_s630lyc0000gn/T/TestRunnerDetectsDuplicateNames2204746964/001/app2.yaml
+stat /var/folders/5p/mbnd92dx63j73ljb_s630lyc0000gn/T/TestRunnerDetectsDuplicateNames2204746964/001
+stat /var/folders/5p/mbnd92dx63j73ljb_s630lyc0000gn/T/TestRunnerDetectsDuplicateNames2204746964/001
+open /var/folders/5p/mbnd92dx63j73ljb_s630lyc0000gn/T/TestRunnerDetectsDuplicateNames2204746964/001
+open /var/folders/5p/mbnd92dx63j73ljb_s630lyc0000gn/T/TestRunnerDetectsDuplicateNames2204746964/001/app1.yaml
+open /var/folders/5p/mbnd92dx63j73ljb_s630lyc0000gn/T/TestRunnerDetectsDuplicateNames2204746964/001/app2.yaml
+open /var/folders/5p/mbnd92dx63j73ljb_s630lyc0000gn/T

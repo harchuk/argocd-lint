@@ -1,6 +1,7 @@
 package lint
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -11,6 +12,7 @@ import (
 	"github.com/argocd-lint/argocd-lint/internal/render"
 	"github.com/argocd-lint/argocd-lint/internal/rule"
 	"github.com/argocd-lint/argocd-lint/internal/schema"
+	"github.com/argocd-lint/argocd-lint/pkg/plugin"
 	"github.com/argocd-lint/argocd-lint/pkg/types"
 )
 
@@ -38,6 +40,7 @@ type Runner struct {
 	schema  *schema.Validator
 	cfg     config.Config
 	workdir string
+	plugins *plugin.Registry
 }
 
 // NewRunner creates a Runner with the provided configuration.
@@ -52,6 +55,7 @@ func NewRunner(cfg config.Config, workdir string) (*Runner, error) {
 		schema:  validator,
 		cfg:     cfg,
 		workdir: workdir,
+		plugins: plugin.NewRegistry(),
 	}, nil
 }
 
@@ -142,6 +146,34 @@ func (r *Runner) Run(opts Options) (Report, error) {
 			}
 			findings = append(findings, rl.Check(m, ctx, cfg)...)
 		}
+		if r.plugins != nil {
+			ctxWithRule := context.Background()
+			for _, plugin := range r.plugins.Plugins() {
+				if applies := plugin.AppliesTo(); applies != nil && !applies(m) {
+					continue
+				}
+				cfg, err := r.cfg.Resolve(plugin.Metadata(), m.FilePath)
+				if err != nil {
+					return Report{}, err
+				}
+				if !cfg.Enabled {
+					continue
+				}
+				findingsFromPlugin, err := plugin.Check(ctxWithRule, m)
+				if err != nil {
+					return Report{}, err
+				}
+				for _, f := range findingsFromPlugin {
+					if f.RuleID == "" {
+						f.RuleID = cfg.Metadata.ID
+					}
+					if f.Severity == "" {
+						f.Severity = cfg.Severity
+					}
+					findings = append(findings, f)
+				}
+			}
+		}
 	}
 
 	findings = append(findings, rule.UniqueNameFindings(ctx)...)
@@ -159,7 +191,6 @@ func (r *Runner) Run(opts Options) (Report, error) {
 		return findings[i].FilePath < findings[j].FilePath
 	})
 
-	threshold := opts.SeverityThreshold
 	return Report{Findings: findings, RuleIndex: ruleIndex}, nil
 }
 
