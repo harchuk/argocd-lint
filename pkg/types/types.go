@@ -26,16 +26,25 @@ const (
 
 // Finding represents a lint rule result.
 type Finding struct {
-	RuleID       string   `json:"ruleId"`
-	Message      string   `json:"message"`
-	Severity     Severity `json:"severity"`
-	FilePath     string   `json:"file"`
-	Line         int      `json:"line,omitempty"`
-	Column       int      `json:"column,omitempty"`
-	ResourceName string   `json:"resourceName"`
-	ResourceKind string   `json:"resourceKind"`
-	Category     string   `json:"category,omitempty"`
-	HelpURL      string   `json:"helpUrl,omitempty"`
+	RuleID       string       `json:"ruleId"`
+	Message      string       `json:"message"`
+	Severity     Severity     `json:"severity"`
+	FilePath     string       `json:"file"`
+	Line         int          `json:"line,omitempty"`
+	Column       int          `json:"column,omitempty"`
+	ResourceName string       `json:"resourceName"`
+	ResourceKind string       `json:"resourceKind"`
+	Category     string       `json:"category,omitempty"`
+	HelpURL      string       `json:"helpUrl,omitempty"`
+	Suggestions  []Suggestion `json:"suggestions,omitempty"`
+}
+
+// Suggestion proposes an optional remediation for a finding.
+type Suggestion struct {
+	Title       string `json:"title"`
+	Description string `json:"description,omitempty"`
+	Patch       string `json:"patch,omitempty"`
+	Path        string `json:"path,omitempty"`
 }
 
 // RuleMetadata keeps description for reporting.

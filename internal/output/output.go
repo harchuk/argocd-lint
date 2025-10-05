@@ -35,43 +35,76 @@ func Write(report lint.Report, format string, w io.Writer) error {
 
 func writeTable(report lint.Report, w io.Writer) error {
 	if len(report.Findings) == 0 {
-		_, err := fmt.Fprintln(w, "No findings")
+		if _, err := fmt.Fprintln(w, "No findings."); err != nil {
+			return err
+		}
+		_, err := fmt.Fprintf(w, "\nSummary: %s\n", SummaryString(report.Findings))
 		return err
 	}
-	headers := []string{"Severity", "Rule", "Resource", "File", "Message"}
-	widths := []int{len(headers[0]), len(headers[1]), len(headers[2]), len(headers[3]), len(headers[4])}
+	headers := []string{"Severity", "Rule", "Resource", "Location", "Message"}
+	widths := make([]int, len(headers))
+	for i, header := range headers {
+		widths[i] = len(header)
+	}
 	rows := make([][]string, 0, len(report.Findings))
 	for _, f := range report.Findings {
+		severity := strings.ToUpper(string(f.Severity))
+		if severity == "" {
+			severity = "INFO"
+		}
 		resource := fmt.Sprintf("%s/%s", f.ResourceKind, f.ResourceName)
 		location := f.FilePath
 		if f.Line > 0 {
 			location = fmt.Sprintf("%s:%d", f.FilePath, f.Line)
 		}
-		row := []string{string(f.Severity), f.RuleID, resource, location, f.Message}
+		row := []string{severity, f.RuleID, resource, location, f.Message}
 		rows = append(rows, row)
-		for i := range row {
-			if len(row[i]) > widths[i] {
-				widths[i] = len(row[i])
+		for i, cell := range row {
+			if len(cell) > widths[i] {
+				widths[i] = len(cell)
 			}
 		}
 	}
-	formatStr := fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%s\n", widths[0], widths[1], widths[2], widths[3])
-	if _, err := fmt.Fprintf(w, formatStr, headers[0], headers[1], headers[2], headers[3], headers[4]); err != nil {
+	separator := buildTableSeparator(widths)
+	if _, err := fmt.Fprintln(w, separator); err != nil {
 		return err
 	}
-	separator := make([]string, len(headers))
-	for i, width := range widths {
-		separator[i] = strings.Repeat("-", width)
+	if err := writeTableRow(w, headers, widths); err != nil {
+		return err
 	}
-	if _, err := fmt.Fprintf(w, formatStr, separator[0], separator[1], separator[2], separator[3], separator[4]); err != nil {
+	if _, err := fmt.Fprintln(w, separator); err != nil {
 		return err
 	}
 	for _, row := range rows {
-		if _, err := fmt.Fprintf(w, formatStr, row[0], row[1], row[2], row[3], row[4]); err != nil {
+		if err := writeTableRow(w, row, widths); err != nil {
 			return err
 		}
 	}
-	return nil
+	if _, err := fmt.Fprintln(w, separator); err != nil {
+		return err
+	}
+	_, err := fmt.Fprintf(w, "\nSummary: %s\n", SummaryString(report.Findings))
+	return err
+}
+
+func buildTableSeparator(widths []int) string {
+	parts := make([]string, len(widths))
+	for i, width := range widths {
+		parts[i] = strings.Repeat("-", width+2)
+	}
+	return "+" + strings.Join(parts, "+") + "+"
+}
+
+func writeTableRow(w io.Writer, values []string, widths []int) error {
+	var b strings.Builder
+	b.WriteString("|")
+	for i, width := range widths {
+		fmt.Fprintf(&b, " %-*s ", width, values[i])
+		b.WriteString("|")
+	}
+	b.WriteString("\n")
+	_, err := io.WriteString(w, b.String())
+	return err
 }
 
 func writeJSON(report lint.Report, w io.Writer) error {
@@ -104,6 +137,13 @@ func writeSARIF(report lint.Report, w io.Writer) error {
 				} `json:"region"`
 			} `json:"physicalLocation"`
 		} `json:"locations"`
+		Properties map[string]interface{} `json:"properties,omitempty"`
+	}
+	type sarifSuggestion struct {
+		Title       string `json:"title"`
+		Description string `json:"description,omitempty"`
+		Patch       string `json:"patch,omitempty"`
+		Path        string `json:"path,omitempty"`
 	}
 	type sarifRule struct {
 		ID        string `json:"id"`
@@ -177,6 +217,20 @@ func writeSARIF(report lint.Report, w io.Writer) error {
 				} `json:"region"`
 			} `json:"physicalLocation"`
 		}{location}
+		if len(finding.Suggestions) > 0 {
+			suggestions := make([]sarifSuggestion, 0, len(finding.Suggestions))
+			for _, suggestion := range finding.Suggestions {
+				suggestions = append(suggestions, sarifSuggestion{
+					Title:       suggestion.Title,
+					Description: suggestion.Description,
+					Patch:       suggestion.Patch,
+					Path:        suggestion.Path,
+				})
+			}
+			res.Properties = map[string]interface{}{
+				"suggestions": suggestions,
+			}
+		}
 		results = append(results, res)
 	}
 

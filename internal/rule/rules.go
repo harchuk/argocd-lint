@@ -92,18 +92,54 @@ func checkRevision(builder types.FindingBuilder, src map[string]interface{}) []t
 	var findings []types.Finding
 	rev := getString(src, "targetRevision")
 	if rev == "" {
-		findings = append(findings, builder.NewFinding("targetRevision is empty; pin to a tag or commit", types.SeverityWarn))
+		finding := builder.NewFinding("targetRevision is empty; pin to a tag or commit", types.SeverityWarn)
+		finding.Suggestions = []types.Suggestion{
+			{
+				Title:       "Pin targetRevision to an immutable reference",
+				Description: "Set targetRevision to a specific tag or commit to avoid drifting deployments.",
+				Patch:       "targetRevision: <tag-or-commit>",
+				Path:        "$.spec.source.targetRevision",
+			},
+		}
+		findings = append(findings, finding)
 		return findings
 	}
 	if rev == "HEAD" {
-		findings = append(findings, builder.NewFinding("targetRevision 'HEAD' is not immutable", types.SeverityError))
+		finding := builder.NewFinding("targetRevision 'HEAD' is not immutable", types.SeverityError)
+		finding.Suggestions = []types.Suggestion{
+			{
+				Title:       "Replace HEAD with immutable revision",
+				Description: "Pin targetRevision to a stable tag or commit instead of HEAD.",
+				Patch:       "targetRevision: <tag-or-commit>",
+				Path:        "$.spec.source.targetRevision",
+			},
+		}
+		findings = append(findings, finding)
 		return findings
 	}
 	if floatingRevisionPattern.MatchString(rev) {
-		findings = append(findings, builder.NewFinding(fmt.Sprintf("targetRevision '%s' refers to a mutable ref", rev), types.SeverityError))
+		finding := builder.NewFinding(fmt.Sprintf("targetRevision '%s' refers to a mutable ref", rev), types.SeverityError)
+		finding.Suggestions = []types.Suggestion{
+			{
+				Title:       "Pin targetRevision to an immutable reference",
+				Description: "Use a specific tag or commit instead of a floating branch name.",
+				Patch:       "targetRevision: <tag-or-commit>",
+				Path:        "$.spec.source.targetRevision",
+			},
+		}
+		findings = append(findings, finding)
 	}
 	if wildcardPattern.MatchString(rev) || semverWildcard.MatchString(rev) {
-		findings = append(findings, builder.NewFinding(fmt.Sprintf("targetRevision '%s' contains wildcard; prefer exact tag", rev), types.SeverityWarn))
+		finding := builder.NewFinding(fmt.Sprintf("targetRevision '%s' contains wildcard; prefer exact tag", rev), types.SeverityWarn)
+		finding.Suggestions = []types.Suggestion{
+			{
+				Title:       "Replace wildcard with exact revision",
+				Description: "Set targetRevision to a precise tag or commit to ensure deterministic syncs.",
+				Patch:       "targetRevision: <tag-or-commit>",
+				Path:        "$.spec.source.targetRevision",
+			},
+		}
+		findings = append(findings, finding)
 	}
 	return findings
 }
@@ -325,14 +361,32 @@ func ruleApplicationSetGoTemplateOptions() Rule {
 			options := getSlice(m.Object, "spec", "goTemplateOptions")
 			builder := types.FindingBuilder{Rule: cfg, FilePath: m.FilePath, Line: m.MetadataLine, ResourceName: m.Name, ResourceKind: m.Kind}
 			if len(options) == 0 {
-				return []types.Finding{builder.NewFinding("spec.goTemplateOptions missing; include 'missingkey=error'", types.SeverityWarn)}
+				finding := builder.NewFinding("spec.goTemplateOptions missing; include 'missingkey=error'", types.SeverityWarn)
+				finding.Suggestions = []types.Suggestion{
+					{
+						Title:       "Add missingkey=error option",
+						Description: "Ensure template rendering fails fast when a variable is absent.",
+						Patch:       "spec:\n  goTemplateOptions:\n    - missingkey=error",
+						Path:        "$.spec.goTemplateOptions",
+					},
+				}
+				return []types.Finding{finding}
 			}
 			for _, opt := range options {
 				if str, ok := opt.(string); ok && str == "missingkey=error" {
 					return nil
 				}
 			}
-			return []types.Finding{builder.NewFinding("Add 'missingkey=error' to spec.goTemplateOptions", types.SeverityWarn)}
+			finding := builder.NewFinding("Add 'missingkey=error' to spec.goTemplateOptions", types.SeverityWarn)
+			finding.Suggestions = []types.Suggestion{
+				{
+					Title:       "Append missingkey=error to goTemplateOptions",
+					Description: "Include missingkey=error so template issues surface during render.",
+					Patch:       "- missingkey=error",
+					Path:        "$.spec.goTemplateOptions[]",
+				},
+			}
+			return []types.Finding{finding}
 		},
 	}
 }

@@ -19,6 +19,12 @@ func sampleReport() lint.Report {
 		FilePath:     "demo.yaml",
 		ResourceName: "demo",
 		ResourceKind: "Application",
+		Suggestions: []types.Suggestion{
+			{
+				Title: "Demo suggestion",
+				Patch: "demo: patch",
+			},
+		},
 	}
 	return lint.Report{
 		Findings: []types.Finding{finding},
@@ -41,6 +47,14 @@ func TestWriteJSON(t *testing.T) {
 	if !ok || len(findings) != 1 {
 		t.Fatalf("expected 1 finding in json output")
 	}
+	firstFinding, ok := findings[0].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected finding to be an object")
+	}
+	suggestions, ok := firstFinding["suggestions"].([]interface{})
+	if !ok || len(suggestions) != 1 {
+		t.Fatalf("expected suggestion payload in json output")
+	}
 }
 
 func TestWriteTableNoFindings(t *testing.T) {
@@ -48,8 +62,12 @@ func TestWriteTableNoFindings(t *testing.T) {
 	if err := Write(lint.Report{}, FormatTable, &buf); err != nil {
 		t.Fatalf("write table: %v", err)
 	}
-	if !strings.Contains(buf.String(), "No findings") {
-		t.Fatalf("expected 'No findings' message")
+	output := buf.String()
+	if !strings.Contains(output, "No findings.") {
+		t.Fatalf("expected 'No findings.' message")
+	}
+	if !strings.Contains(output, "Summary: 0 findings") {
+		t.Fatalf("expected summary with zero findings")
 	}
 }
 
@@ -60,6 +78,34 @@ func TestWriteSARIF(t *testing.T) {
 	}
 	if !strings.Contains(buf.String(), "\"version\": \"2.1.0\"") {
 		t.Fatalf("expected SARIF version header")
+	}
+	var payload map[string]interface{}
+	if err := json.Unmarshal(buf.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal sarif: %v", err)
+	}
+	runs, ok := payload["runs"].([]interface{})
+	if !ok || len(runs) == 0 {
+		t.Fatalf("expected sarif runs array")
+	}
+	firstRun, ok := runs[0].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected run to be an object")
+	}
+	results, ok := firstRun["results"].([]interface{})
+	if !ok || len(results) == 0 {
+		t.Fatalf("expected results array in sarif output")
+	}
+	firstResult, ok := results[0].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected result to be an object")
+	}
+	props, ok := firstResult["properties"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected properties block with suggestions")
+	}
+	sarifSuggestions, ok := props["suggestions"].([]interface{})
+	if !ok || len(sarifSuggestions) != 1 {
+		t.Fatalf("expected sarif suggestions entry")
 	}
 }
 

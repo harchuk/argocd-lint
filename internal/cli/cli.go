@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/argocd-lint/argocd-lint/internal/config"
 	"github.com/argocd-lint/argocd-lint/internal/dryrun"
@@ -42,7 +43,7 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 	pluginDirs := flags.StringSlice("plugin-dir", nil, "Directory of Rego plugin modules (repeatable, recursive)")
 
 	if err := flags.Parse(args); err != nil {
-		fmt.Fprintf(stderr, "argument error: %v\n", err)
+		printError(stderr, "argument", err)
 		return 2
 	}
 
@@ -53,36 +54,36 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 
 	remaining := flags.Args()
 	if len(remaining) == 0 {
-		fmt.Fprintln(stderr, "usage: argocd-lint <path> [flags]")
+		fmt.Fprintln(stderr, "Usage: argocd-lint <path> [flags]")
 		return 2
 	}
 	target := remaining[0]
 	absTarget, err := ResolvePath(target)
 	if err != nil {
-		fmt.Fprintf(stderr, "target error: %v\n", err)
+		printError(stderr, "target", err)
 		return 2
 	}
 	info, err := os.Stat(absTarget)
 	if err != nil {
-		fmt.Fprintf(stderr, "target error: %v\n", err)
+		printError(stderr, "target", err)
 		return 2
 	}
 
 	cfg, err := config.Load(*rulesPath)
 	if err != nil {
-		fmt.Fprintf(stderr, "config error: %v\n", err)
+		printError(stderr, "config", err)
 		return 2
 	}
 
 	wd, err := os.Getwd()
 	if err != nil {
-		fmt.Fprintf(stderr, "working directory error: %v\n", err)
+		printError(stderr, "workdir", err)
 		return 2
 	}
 
 	runner, err := lint.NewRunner(cfg, wd)
 	if err != nil {
-		fmt.Fprintf(stderr, "runner error: %v\n", err)
+		printError(stderr, "runner", err)
 		return 2
 	}
 
@@ -91,11 +92,11 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 		for _, p := range append(*pluginFiles, *pluginDirs...) {
 			path, err := ResolvePath(p)
 			if err != nil {
-				fmt.Fprintf(stderr, "plugin path error: %v\n", err)
+				printError(stderr, "plugin path", err)
 				return 2
 			}
 			if _, err := os.Stat(path); err != nil {
-				fmt.Fprintf(stderr, "plugin path error: %v\n", err)
+				printError(stderr, "plugin path", err)
 				return 2
 			}
 			resolved = append(resolved, path)
@@ -103,7 +104,7 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 		loader := regoplugin.NewLoader(resolved...)
 		plugins, err := loader.Load(context.Background())
 		if err != nil {
-			fmt.Fprintf(stderr, "plugin load error: %v\n", err)
+			printError(stderr, "plugin load", err)
 			return 2
 		}
 		runner.RegisterPlugins(plugins...)
@@ -113,7 +114,7 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 	if root != "" {
 		root, err = ResolvePath(root)
 		if err != nil {
-			fmt.Fprintf(stderr, "repo root error: %v\n", err)
+			printError(stderr, "repo root", err)
 			return 2
 		}
 	} else {
@@ -158,12 +159,12 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 
 	report, err := runner.Run(opts)
 	if err != nil {
-		fmt.Fprintf(stderr, "lint error: %v\n", err)
+		printError(stderr, "lint", err)
 		return 2
 	}
 
 	if err := output.Write(report, *format, stdout); err != nil {
-		fmt.Fprintf(stderr, "output error: %v\n", err)
+		printError(stderr, "output", err)
 		return 2
 	}
 
@@ -173,7 +174,7 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 	}
 	thresholdSeverity, err := config.ParseSeverity(thresholdValue)
 	if err != nil {
-		fmt.Fprintf(stderr, "severity threshold error: %v\n", err)
+		printError(stderr, "threshold", err)
 		return 2
 	}
 
@@ -195,4 +196,8 @@ func ResolvePath(target string) (string, error) {
 		return "", err
 	}
 	return filepath.Join(wd, target), nil
+}
+
+func printError(w io.Writer, stage string, err error) {
+	fmt.Fprintf(w, "[ERROR] %-12s %v\n", strings.ToUpper(stage), err)
 }
