@@ -21,7 +21,8 @@
   <g font-family="'Inter', 'Helvetica', sans-serif" fill="#e2e8f0">
     <text font-size="20" font-weight="600" text-anchor="middle">
       <tspan x="137" y="94">Git repo</tspan>
-      <tspan x="137" y="122" font-size="14">Application &amp; ApplicationSet manifests</tspan>
+      <tspan x="137" y="118" font-size="14">Application &amp;</tspan>
+      <tspan x="137" y="138" font-size="14">ApplicationSet manifests</tspan>
     </text>
     <text font-size="20" font-weight="600" text-anchor="middle">
       <tspan x="390" y="94">argocd-lint</tspan>
