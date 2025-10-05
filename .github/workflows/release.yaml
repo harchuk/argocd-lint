@@ -32,7 +32,9 @@ jobs:
             EXT=".exe"
           fi
           OUTPUT="dist/argocd-lint-${GOOS}-${GOARCH}${EXT}"
-          go build -o "$OUTPUT" ./cmd/argocd-lint
+          VERSION="${GITHUB_REF_NAME#v}"
+          LDFLAGS="-X github.com/argocd-lint/argocd-lint/pkg/version.Version=${VERSION} -X github.com/argocd-lint/argocd-lint/pkg/version.GitCommit=${GITHUB_SHA} -X github.com/argocd-lint/argocd-lint/pkg/version.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          go build -ldflags "$LDFLAGS" -o "$OUTPUT" ./cmd/argocd-lint
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

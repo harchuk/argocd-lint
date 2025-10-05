@@ -9,7 +9,9 @@ import (
     "github.com/argocd-lint/argocd-lint/internal/config"
     "github.com/argocd-lint/argocd-lint/internal/lint"
     "github.com/argocd-lint/argocd-lint/internal/output"
+    "github.com/argocd-lint/argocd-lint/internal/render"
     "github.com/argocd-lint/argocd-lint/pkg/types"
+    "github.com/argocd-lint/argocd-lint/pkg/version"
     "github.com/spf13/pflag"
 )
 
@@ -23,10 +25,20 @@ func Execute(args []string, stdout, stderr io.Writer) int {
     includeApps := flags.Bool("apps", true, "Include Application manifests")
     includeAppSets := flags.Bool("appsets", true, "Include ApplicationSet manifests")
     severityThreshold := flags.String("severity-threshold", "error", "Exit with non-zero status at or above this severity (info|warn|error)")
+    renderEnabled := flags.Bool("render", false, "Render Helm/Kustomize sources before linting")
+    helmBinary := flags.String("helm-binary", "helm", "Helm binary to use for rendering")
+    kustomizeBinary := flags.String("kustomize-binary", "kustomize", "Kustomize binary to use for rendering")
+    repoRoot := flags.String("repo-root", "", "Override repository root for resolving source paths when rendering")
+    showVersion := flags.Bool("version", false, "Print argocd-lint version and exit")
 
     if err := flags.Parse(args); err != nil {
         fmt.Fprintf(stderr, "argument error: %v\n", err)
         return 2
+    }
+
+    if *showVersion {
+        fmt.Fprintln(stdout, version.String())
+        return 0
     }
 
     remaining := flags.Args()
@@ -35,7 +47,13 @@ func Execute(args []string, stdout, stderr io.Writer) int {
         return 2
     }
     target := remaining[0]
-    if _, err := os.Stat(target); err != nil {
+    absTarget, err := ResolvePath(target)
+    if err != nil {
+        fmt.Fprintf(stderr, "target error: %v\n", err)
+        return 2
+    }
+    info, err := os.Stat(absTarget)
+    if err != nil {
         fmt.Fprintf(stderr, "target error: %v\n", err)
         return 2
     }
@@ -58,12 +76,35 @@ func Execute(args []string, stdout, stderr io.Writer) int {
         return 2
     }
 
+    root := *repoRoot
+    if root != "" {
+        root, err = ResolvePath(root)
+        if err != nil {
+            fmt.Fprintf(stderr, "repo root error: %v\n", err)
+            return 2
+        }
+    } else {
+        if info.IsDir() {
+            root = absTarget
+        } else {
+            root = filepath.Dir(absTarget)
+        }
+    }
+
+    renderOpts := render.Options{
+        Enabled:         *renderEnabled,
+        HelmBinary:      *helmBinary,
+        KustomizeBinary: *kustomizeBinary,
+        RepoRoot:        root,
+    }
+
     opts := lint.Options{
         Target:                 target,
         IncludeApplications:    *includeApps,
         IncludeApplicationSets: *includeAppSets,
         Config:                 cfg,
         WorkingDir:             wd,
+        Render:                 renderOpts,
     }
 
     report, err := runner.Run(opts)

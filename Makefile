@@ -3,7 +3,7 @@ BUILD_DIR := bin
 DIST_DIR := dist
 GO_FILES := $(shell find . -name '*.go' -not -path './vendor/*')
 
-.PHONY: build clean test fmt lint release examples seed
+.PHONY: build clean test fmt lint release examples seed check
 
 build:
 	@echo "Building $(BINARY)"
@@ -15,6 +15,11 @@ clean:
 
 fmt:
 	@gofmt -w $(GO_FILES)
+
+check:
+	@gofmt -l $(GO_FILES) | tee /tmp/gofmt.out
+	@if [ -s /tmp/gofmt.out ]; then echo "Go files need formatting" && exit 1; fi
+	@go test ./...
 
 lint:
 	@$(BUILD_DIR)/$(BINARY) examples/apps --format table

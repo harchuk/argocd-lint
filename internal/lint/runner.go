@@ -8,6 +8,7 @@ import (
     "github.com/argocd-lint/argocd-lint/internal/config"
     "github.com/argocd-lint/argocd-lint/internal/loader"
     "github.com/argocd-lint/argocd-lint/internal/manifest"
+    "github.com/argocd-lint/argocd-lint/internal/render"
     "github.com/argocd-lint/argocd-lint/internal/rule"
     "github.com/argocd-lint/argocd-lint/internal/schema"
     "github.com/argocd-lint/argocd-lint/pkg/types"
@@ -20,6 +21,7 @@ type Options struct {
     IncludeApplicationSets   bool
     Config                   config.Config
     WorkingDir               string
+    Render                   render.Options
 }
 
 // Report is the lint result collection.
@@ -97,12 +99,32 @@ func (r *Runner) Run(opts Options) (Report, error) {
         ruleIndex[rl.Metadata.ID] = rl.Metadata
     }
 
+    var renderer *render.Renderer
+    if opts.Render.Enabled {
+        var err error
+        renderer, err = render.NewRenderer(r.cfg, opts.Render)
+        if err != nil {
+            return Report{}, err
+        }
+        for _, meta := range renderer.Metadata() {
+            ruleIndex[meta.ID] = meta
+        }
+    }
+
     for _, m := range included {
         schemaFindings, err := r.schema.Validate(m)
         if err != nil {
             return Report{}, err
         }
         findings = append(findings, schemaFindings...)
+
+        if renderer != nil {
+            renderFindings, err := renderer.Render(m)
+            if err != nil {
+                return Report{}, err
+            }
+            findings = append(findings, renderFindings...)
+        }
     }
 
     for _, m := range included {
