@@ -52,6 +52,9 @@ func TestSchemaValidatorAcceptsValidApplicationSet(t *testing.T) {
 		Object: map[string]interface{}{
 			"apiVersion": "argoproj.io/v1alpha1",
 			"kind":       "ApplicationSet",
+			"metadata": map[string]interface{}{
+				"name": "demo",
+			},
 			"spec": map[string]interface{}{
 				"generators": []interface{}{
 					map[string]interface{}{

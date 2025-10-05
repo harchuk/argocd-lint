@@ -1,5 +1,8 @@
 bin/
 dist/
+.gocache/
+.gomodcache/
+argocd-lint
 *.log
 *.tmp
 coverage.out
