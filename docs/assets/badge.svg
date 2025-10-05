@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="170" height="32" role="img" aria-labelledby="badgeTitle badgeDesc">
+  <title id="badgeTitle">argocd-lint badge</title>
+  <desc id="badgeDesc">Badge displaying argocd-lint ready</desc>
+  <rect width="170" height="32" fill="#0f172a" rx="6" />
+  <rect x="0" y="0" width="96" height="32" fill="#1e293b" rx="6" />
+  <rect x="94" y="0" width="76" height="32" fill="#38bdf8" rx="6" />
+  <text x="48" y="21" text-anchor="middle" font-family="'Inter', 'Helvetica', sans-serif" font-size="13" fill="#cbd5f5">argocd-lint</text>
+  <text x="130" y="21" text-anchor="middle" font-family="'Inter', 'Helvetica', sans-serif" font-size="13" font-weight="600" fill="#0b1120">ready</text>
+</svg>

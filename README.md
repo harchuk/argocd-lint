@@ -3,6 +3,7 @@
 [![CI](https://github.com/argocd-lint/argocd-lint/actions/workflows/ci.yaml/badge.svg)](https://github.com/argocd-lint/argocd-lint/actions/workflows/ci.yaml)
 [![Release](https://github.com/argocd-lint/argocd-lint/actions/workflows/release.yaml/badge.svg)](https://github.com/argocd-lint/argocd-lint/actions/workflows/release.yaml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+![argocd-lint ready badge](docs/assets/badge.svg)
 
 > Fast, offline-first linting for Argo CD `Application` and `ApplicationSet` manifests.
 >
