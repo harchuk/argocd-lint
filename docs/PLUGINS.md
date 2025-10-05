@@ -1,4 +1,17 @@
-# Plugin Roadmap
+# Plugin Guide
+
+The `pkg/plugin/rego` loader lets you extend argocd-lint with Rego policies and bundle them for
+teams. Use this guide alongside the quick reference below to build, package, and share your own
+rules.
+
+## Quick reference
+
+| Task | Command / Link |
+| --- | --- |
+| List bundled rules | `argocd-lint plugins list --dir bundles/core` |
+| Lint with additional modules | `argocd-lint ./apps --plugin-dir ./policies` |
+| Package curated bundles | `./scripts/package-plugin-bundles.sh dist` |
+| Contribution checklist | [Community bundle submissions](#community-bundle-submissions) |
 
 `pkg/plugin` now ships with a Rego adapter so custom policy bundles can participate in lint runs.
 

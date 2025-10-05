@@ -1,288 +1,186 @@
 # argocd-lint
 
-[CI](https://github.com/argocd-lint/argocd-lint/actions/workflows/ci.yaml)
-[Release]https://github.com/argocd-lint/argocd-lint/actions/workflows/release.yaml)
+[![CI]](https://github.com/argocd-lint/argocd-lint/actions/workflows/ci.yaml)
+[![Release]](https://github.com/argocd-lint/argocd-lint/actions/workflows/release.yaml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 ![argocd-lint ready badge](docs/assets/badge.svg)
 
-> Fast, offline-first linting for Argo CD `Application` and `ApplicationSet` manifests.
+> Fast, offline-first linting for Argo CD `Application`, `ApplicationSet`, and `AppProject` resources.
 >
-> - Catch schema and policy drift before it reaches the cluster.
-> - Wire the same guardrails into CI, pre-commit, or Argo CD repo-server.
-> - Extend the rulebook with curated or custom Rego plugins.
+> - 🧭 Catch schema drift and risky sync plans before Argo CD does.
+> - 🧰 Ship a single binary that renders, lint, dry-runs, and previews ApplicationSets.
+> - 🧩 Extend the rulebook with curated or custom Rego bundles.
 
 ![argocd-lint overview](docs/assets/overview.svg)
 
-## At a glance
+## Quick links
 
-| Task | Command or resource |
+| Action | Command / Resource |
 | --- | --- |
-| Install the latest release | `go install github.com/argocd-lint/argocd-lint/cmd/argocd-lint@latest` |
-| Run a quick lint with warnings as failures | `argocd-lint ./apps --severity-threshold=warn` |
-| Package curated plugin bundles | `./scripts/package-plugin-bundles.sh dist` |
-| List curated plugin metadata | `argocd-lint plugins list` |
-| Integrate with Argo CD repo-server | [`docs/REPO_SERVER.md`](docs/REPO_SERVER.md) |
+| Install latest version | `go install github.com/argocd-lint/argocd-lint/cmd/argocd-lint@latest` |
+| Lint an environment | `argocd-lint ./apps --severity-threshold=warn` |
+| Preview ApplicationSet drift | `argocd-lint applicationset plan --file appset.yaml` |
+| List bundled policies | `argocd-lint plugins list` |
+| Package curated bundles | `./scripts/package-plugin-bundles.sh dist` |
+| Repo-server integration guide | [`docs/REPO_SERVER.md`](docs/REPO_SERVER.md) |
 
 ## Contents
 
-- [Features](#features)
-- [Installation](#installation)
-- [Quick start](#quick-start)
-- [Configuration](#configuration)
-  - [Optional rendering](#optional-rendering)
-  - [Policy plugins](#policy-plugins)
-  - [API validation (dry-run)](#api-validation-dry-run)
-- [Output formats](#output-formats)
-- [Shipped rules](#shipped-rules)
-- [Integrations](#integrations)
-- [Development](#development)
+1. [Highlights](#highlights)
+2. [Install](#install)
+3. [Get started in 30 seconds](#get-started-in-30-seconds)
+4. [CLI tour](#cli-tour)
+5. [Configuration & policies](#configuration--policies)
+6. [ApplicationSet drift preview](#applicationset-drift-preview)
+7. [Outputs & integrations](#outputs--integrations)
+8. [Contributing & roadmap](#contributing--roadmap)
+9. [License](#license)
 
-## Features
+## Highlights
 
-- **Schema aware** – validates manifests against the Argo CD CRDs without needing a cluster.
-- **Rule engine** – ships with opinionated best-practice checks and per-rule severity overrides.
-- **Flexible output** – table (interactive), JSON (automation), and SARIF (GitHub Code Scanning).
-- **Optional rendering** – Helm/Kustomize rendering and findings via `--render`.
-- **Policy plugins** – load custom Rego rules or curated bundles with `--plugin` / `--plugin-dir`.
-- **Integrations** – ready-to-use pre-commit hook, CI workflows, and SARIF upload recipe.
-- **Single binary** – no runtime dependencies; ideal for Git hooks and build agents.
+- **Schema aware** – embedded CRDs keep lint checks fast and offline.
+- **Opinionated rules** – curated best practices cover revisions, destinations, labels, and multi-source pitfalls.
+- **Extensible** – plug in Rego modules, discover their metadata, and curate bundles for teams.
+- **Render & validate** – optional Helm/Kustomize rendering plus kubeconform/server dry-run modes.
+- **Single binary** – formatted tables, JSON, and SARIF outputs with zero runtime dependencies.
 
-### Why platform teams ship it
+## Install
 
-- **Predictable syncs** – block risky manifests before Argo CD applies them.
-- **Shared guardrails** – reuse the same policy bundles locally, in CI, and in repo-server.
-- **Fast feedback loop** – sub-second linting for typical app directories.
-- **Batteries included** – curated bundles plus a plugin API for everything else.
+| Method | Command |
+| --- | --- |
+| Go toolchain (1.22+) | `go install github.com/argocd-lint/argocd-lint/cmd/argocd-lint@latest` |
+| Build from source | ```bash
+git clone https://github.com/argocd-lint/argocd-lint.git
+cd argocd-lint
+go build -o bin/argocd-lint ./cmd/argocd-lint
+``` |
+| Release binaries | Download from [GitHub Releases](https://github.com/argocd-lint/argocd-lint/releases) and drop on your `$PATH`. |
 
-## Installation
-
-Choose the method that best fits your workflow:
-
-- **Download a release** (Linux/macOS/Windows, amd64/arm64) from [GitHub Releases](https://github.com/argocd-lint/argocd-lint/releases) and place the binary on your `$PATH`.
-- **Build from source**:
-  ```bash
-  git clone https://github.com/argocd-lint/argocd-lint.git
-  cd argocd-lint
-  go build -o bin/argocd-lint ./cmd/argocd-lint
-  ```
-- **Use Go install** (requires Go 1.22+):
-  ```bash
-  go install github.com/argocd-lint/argocd-lint/cmd/argocd-lint@latest
-  ```
-
-Verify the installation:
+Verify the CLI:
 
 ```bash
 argocd-lint --version
 ```
 
-## Quick start
+## Get started in 30 seconds
 
-Pick the workflow that matches your day-to-day routine:
+1. Lint a repo with warnings treated as failures:
 
-- **Code review gate** – `argocd-lint ./apps --severity-threshold=warn`
-- **ApplicationSet only** – `argocd-lint ./clusters --apps=false --appsets`
-- **Preview ApplicationSet plan** – `argocd-lint applicationset plan --file appset.yaml`
-- **Render and lint Helm charts** –
-  ```bash
-  argocd-lint ./clusters \
-    --render \
-    --helm-binary=$(which helm)
-  ```
-- **Embed in repo-server** – follow [`examples/repo-server-plugin`](examples/repo-server-plugin/README.md)
+   ```bash
+   argocd-lint ./manifests --severity-threshold=warn
+   ```
+
+2. Render Helm charts before linting:
+
+   ```bash
+   argocd-lint ./clusters \
+     --render \
+     --helm-binary=$(which helm)
+   ```
+
+3. Preview ApplicationSet drift:
+
+   ```bash
+   argocd-lint applicationset plan --file appset.yaml
+   ```
+
+4. Surface curated bundle metadata:
+
+   ```bash
+   argocd-lint plugins list --dir bundles/core
+   ```
 
 ![argocd-lint CLI report](docs/assets/cli-report.svg)
 
-## Configuration
+## CLI tour
 
-Fine-tune rules with a YAML file:
+| Command | What it does |
+| --- | --- |
+| `argocd-lint <path>` | Lint Applications, ApplicationSets, and AppProjects in a directory or file. |
+| `--format table|json|sarif` | Choose human-readable tables or automation-friendly formats. |
+| `--render` | Render Helm/Kustomize sources before linting. |
+| `--dry-run=kubeconform|server` | Validate rendered resources using kubeconform or the API server. |
+| `--argocd-version v2.8` | Pin schema validation to a specific Argo CD release. |
+| `plugins list` | Discover rule metadata (id, severity, applies-to, source) for curated/community bundles. |
+| `applicationset plan` | Preview generated Applications and drift (create/delete/unchanged) without hitting the API server. |
+
+### Sample plan output
+
+```
+$ argocd-lint applicationset plan --file appset.yaml
++--------+---------+----------------------------+---------------------------------------------+
+| Action | Name    | Destination                | Source                                      |
++--------+---------+----------------------------+---------------------------------------------+
+| CREATE | app-one | apps | https://example.com | https://example.com/repo.git | apps/app-one |
+| CREATE | app-two | apps | https://example.com | https://example.com/repo.git | apps/app-two |
++--------+---------+----------------------------+---------------------------------------------+
+
+Total: 2  create=2  delete=0  unchanged=0
+```
+
+## Configuration & policies
+
+Fine-tune rules via YAML:
 
 ```yaml
 rules:
   AR001:
-    severity: error      # escalate floating targetRevision to error
+    severity: error
   AR006:
-    enabled: false       # disable finalizer guidance globally
+    enabled: false
 
-severityThreshold: warn  # default threshold for exit code (overridden by CLI flag)
+severityThreshold: warn
 
 overrides:
   - pattern: "environments/prod/**"
     rules:
       AR007:
-        severity: error  # tighten ignoreDifferences in production
+        severity: error
 ```
 
-Apply the configuration via `--rules`:
+Apply the config:
 
 ```bash
 argocd-lint ./manifests --rules rules.yaml --format json
 ```
 
-### Optional rendering
+### Policy bundles & plugins
 
-Use local Helm/Kustomize sources when linting:
+- Load custom Rego policies: `argocd-lint ./apps --plugin-dir ./custom-policies`.
+- Discover curated metadata: `argocd-lint plugins list --dir bundles/core`.
+- Authoring guide & community checklist: [docs/PLUGINS.md](docs/PLUGINS.md).
+- Bundles live under `bundles/` (core, security, plus community submissions).
 
-```bash
-argocd-lint ./apps \
-  --render \
-  --helm-binary=/opt/homebrew/bin/helm \
-  --kustomize-binary=/opt/homebrew/bin/kustomize \
-  --repo-root=$(pwd)
-```
+## ApplicationSet drift preview
 
-Rendering failures surface as `RENDER_HELM` or `RENDER_KUSTOMIZE` findings and respect your rule overrides.
+`applicationset plan` expands list generators with Go templates + sprig helpers, renders the
+Application template for each element, and compares the resulting names with Applications on disk
+(via `--current` or the working tree). Use it in CI to show exactly which Applications would be
+created, deleted, or left unchanged during the next sync. See [docs/APPLICATIONSET_PLAN.md](docs/APPLICATIONSET_PLAN.md)
+for deeper examples.
 
-### Policy plugins
+## Outputs & integrations
 
-Load Rego policies to extend the built-in rule set:
+- **Formats** – `table` (default), `json`, and `sarif` for GitHub Advanced Security.
+- **Dry-run** – kubeconform or API server validation with `--dry-run=kubeconform|server`.
+- **Repo-server** – reuse lint guardrails inside Argo CD using the Config Management Plugin ([examples/repo-server-plugin](examples/repo-server-plugin/README.md)).
+- **CI / Git hooks** – the static binary drops straight into pipelines and pre-commit hooks.
 
-```bash
-argocd-lint ./apps \
-  --plugin examples/plugins/require-prefix.rego \
-  --plugin-dir ./custom-policies
-```
+## Contributing & roadmap
 
-Each plugin exports metadata (rule id, default severity, category) and a `deny` rule that returns findings. See [docs/PLUGINS.md](docs/PLUGINS.md) for the schema and authoring guide.
+- Roadmap & recently shipped items: [docs/ROADMAP.md](docs/ROADMAP.md).
+- Release process: [docs/RELEASING.md](docs/RELEASING.md).
+- Plugin contribution checklist: [docs/PLUGINS.md](docs/PLUGINS.md#community-bundle-submissions).
+- Before opening a PR, run the validation suite:
 
-List the shipped policies and their metadata with:
-
-```bash
-argocd-lint plugins list --dir bundles/core
-```
-
-> Tip: curated bundles live in `bundles/`. Package them for air-gapped
-> environments with `./scripts/package-plugin-bundles.sh` and mount them into CI
-> runners or repo-server sidecars.
-
-#### Bundle catalogue
-
-- **Core** – consistent naming and ownership labels (`bundles/core/`).
-- **Security** – HTTPS destinations and secure Git transport (`bundles/security/`).
-
-### API validation (dry-run)
-
-Use kubeconform or the Kubernetes API server to validate rendered resources:
-
-```bash
-argocd-lint ./apps --render --dry-run=kubeconform
-
-argocd-lint ./apps \
-  --render \
-  --dry-run=server \
-  --kubeconfig=$HOME/.kube/config \
-  --kube-context=prod
-```
-
-Dry-run failures surface as `DRYRUN_KUBECONFORM` or `DRYRUN_SERVER` findings.
-
-### Repo-server integration
-
-Run the exact same lint checks during Argo CD syncs:
-
-1. Build the repo-server image in `examples/repo-server-plugin/` so the container
-   includes `argocd-lint` and your preferred bundles.
-2. Register the Config Management Plugin by patching `argocd-cmp-cm` with
-   `plugin.yaml`.
-3. Point applications at the plugin via `spec.source.plugin.name: argocd-lint` and
-   (optionally) tune parameters like the severity threshold.
-
-Full instructions live in [`docs/REPO_SERVER.md`](docs/REPO_SERVER.md).
-
-### Output formats
-
-- `table` (default) – human-readable summary.
-- `json` – machine-friendly format for scripting.
-- `sarif` – upload to GitHub Code Scanning.
-
-## Shipped rules
-
-| ID | Kind(s) | Default | Category | Summary |
-| --- | --- | --- | --- | --- |
-| AR001 | Application, ApplicationSet | warn | Delivery | `targetRevision` must be pinned (no floating refs). |
-| AR002 | Application, ApplicationSet | error | Governance | `spec.project` must not be empty or `default`. |
-| AR003 | Application | error | Safety | Namespace destinations must declare `destination.namespace`. |
-| AR004 | Application | warn | Operations | `syncPolicy` should explicitly choose automated/manual. |
-| AR005 | Application | warn | Operations | Automated sync should enable `prune` and `selfHeal`. |
-| AR006 | Application | info | Safety | Finalizer usage should be intentional. |
-| AR007 | Application | warn | Drift | `ignoreDifferences` must remain tightly scoped. |
-| AR008 | ApplicationSet | warn | Delivery | Enable `missingkey=error` for Go templates. |
-| AR009 | Application | error | Delivery | Source definitions must be consistent (`path` vs `chart`). |
-| AR010 | Application, ApplicationSet | info | Observability | Recommend `app.kubernetes.io/name` label. |
-| AR011 | Application | error | Consistency | Application names must be unique within a lint run. |
-| SCHEMA_APPLICATION | Application | error | Compliance | Built-in CRD schema validation. |
-| SCHEMA_APPLICATIONSET | ApplicationSet | error | Compliance | Built-in CRD schema validation. |
-| RENDER_HELM | Application, ApplicationSet | error | Render | `helm template` must succeed (`--render`). |
-| RENDER_KUSTOMIZE | Application, ApplicationSet | error | Render | `kustomize build` must succeed (`--render`). |
-| DRYRUN_KUBECONFORM | Application, ApplicationSet | error | Validation | `kubeconform` must accept the rendered manifest (`--dry-run=kubeconform`). |
-| DRYRUN_SERVER | Application, ApplicationSet | error | Validation | `kubectl --dry-run=server` must accept the manifest (`--dry-run=server`). |
-
-## Integrations
-
-### Pre-commit
-
-```yaml
-repos:
-  - repo: local
-    hooks:
-      - id: argocd-lint
-        name: argocd-lint
-        entry: argocd-lint --severity-threshold=warn
-        language: system
-        pass_filenames: false
-```
-
-### GitHub Actions
-
-End-to-end example:
-
-```yaml
-name: Lint Argo CD manifests
-
-on: [pull_request]
-
-jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.22'
-      - run: go install github.com/argocd-lint/argocd-lint/cmd/argocd-lint@latest
-      - run: argocd-lint apps --format sarif > argocd-lint.sarif
-      - uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: argocd-lint.sarif
-```
-
-The repository also ships reusable workflows in `.github/workflows/` for CI and release automation.
-
-## Development
-
-```bash
-make build     # compile binary into ./bin
-make test      # go test ./...
-make check     # gofmt check + go test
-make release   # cross-compile into ./dist
-```
-
-Helpful references:
-
-- [CONTRIBUTING.md](CONTRIBUTING.md) – development workflow and expectations.
-- [AGENT.md](AGENT.md) – guardrails for automation.
-- [CHANGELOG.md](CHANGELOG.md) – release notes history.
-- [docs/RELEASING.md](docs/RELEASING.md) – maintainer release guide.
-- [docs/PLUGINS.md](docs/PLUGINS.md) – roadmap for custom policy plug-ins.
-- Releases are automated: every merge to `main` triggers release-please to prepare a draft; tags (`v*`) build cross-platform binaries and publish to GitHub Releases.
-- Container image is published to GHCR (`ghcr.io/<org>/argocd-lint`) alongside each tagged release.
-
-## Community & support
-
-- Questions or ideas? Open a [feature request](.github/ISSUE_TEMPLATE/feature_request.md).
-- Found a bug? File a [bug report](.github/ISSUE_TEMPLATE/bug_report.md) with reproduction steps.
-- Contributions are welcome—see [CONTRIBUTING.md](CONTRIBUTING.md) and abide by the [Code of Conduct](CODE_OF_CONDUCT.md).
+  ```bash
+  go test ./...
+  gofmt -w $(find . -name '*.go' -not -path './vendor/*')
+  ```
 
 ## License
 
-Apache License 2.0 – see [LICENSE](LICENSE).
+Licensed under the [Apache 2.0 License](LICENSE).
+
+[CI]: https://img.shields.io/github/actions/workflow/status/argocd-lint/argocd-lint/ci.yaml?branch=main&label=CI
+[Release]: https://img.shields.io/github/actions/workflow/status/argocd-lint/argocd-lint/release.yaml?label=release
