@@ -19,8 +19,12 @@ jobs:
 
       - name: Verify gofmt
         run: |
-          gofmt -w $(find . -name '*.go' -not -path './vendor/*')
-          git diff --exit-code
+          fmt_files=$(gofmt -l $(find . -name '*.go' -not -path './vendor/*'))
+          if [ -n "$fmt_files" ]; then
+            echo "The following files need gofmt:" >&2
+            echo "$fmt_files" >&2
+            exit 1
+          fi
 
       - name: Tidy
         run: go mod tidy
@@ -37,4 +41,19 @@ jobs:
       - name: Lint sample manifests
         run: |
           go build -o ./bin/argocd-lint ./cmd/argocd-lint
-          ./bin/argocd-lint examples/apps --format table
+          ./bin/argocd-lint examples/apps/app-good.yaml --format table
+          ./bin/argocd-lint examples/appsets --appsets --format table
+
+      - name: Ensure failing manifest triggers error
+        run: |
+          set +e
+          ./bin/argocd-lint examples/apps/app-bad.yaml --format table
+          status=$?
+          if [ "$status" -eq 0 ]; then
+            echo "Expected lint failure for app-bad.yaml"
+            exit 1
+          fi
+          if [ "$status" -ne 1 ]; then
+            echo "Unexpected exit code $status for failing manifest"
+            exit $status
+          fi

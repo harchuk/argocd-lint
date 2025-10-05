@@ -17,10 +17,13 @@
       "properties": {
         "name": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "maxLength": 253,
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
         },
         "namespace": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
         },
         "labels": {
           "type": "object",
@@ -84,10 +87,29 @@
               "type": "string"
             },
             "helm": {
-              "type": "object"
+              "type": "object",
+              "properties": {
+                "valueFiles": {
+                  "type": "array",
+                  "items": {"type": "string"}
+                },
+                "parameters": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {"type": "string"},
+                      "value": {"type": "string"},
+                      "forceString": {"type": "boolean"}
+                    }
+                  }
+                }
+              },
+              "additionalProperties": true
             },
             "kustomize": {
-              "type": "object"
+              "type": "object",
+              "additionalProperties": true
             }
           }
         },

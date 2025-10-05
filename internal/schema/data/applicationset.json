@@ -17,10 +17,13 @@
       "properties": {
         "name": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "maxLength": 253,
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
         },
         "namespace": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
         },
         "labels": {
           "type": "object",
@@ -87,7 +90,9 @@
                 "repoURL": {"type": "string"},
                 "targetRevision": {"type": "string"},
                 "path": {"type": "string"},
-                "chart": {"type": "string"}
+                "chart": {"type": "string"},
+                "helm": {"type": "object", "additionalProperties": true},
+                "kustomize": {"type": "object", "additionalProperties": true}
               }
             },
             "sources": {

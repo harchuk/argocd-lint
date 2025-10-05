@@ -56,10 +56,14 @@ func TestResolveWithOverrides(t *testing.T) {
 }
 
 func TestParseSeverityErrors(t *testing.T) {
-	if _, err := ParseSeverity("critical"); err == nil {
+	if sev, err := ParseSeverity("critical"); err == nil {
 		t.Fatalf("expected error on unknown severity")
+	} else if sev != "" {
+		t.Fatalf("expected empty severity on error, got %q", sev)
 	}
-	if _, err := ParseSeverity(""); err == nil {
+	if sev, err := ParseSeverity(""); err == nil {
 		t.Fatalf("expected error on empty severity")
+	} else if sev != "" {
+		t.Fatalf("expected empty severity on error, got %q", sev)
 	}
 }

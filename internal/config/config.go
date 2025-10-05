@@ -104,8 +104,8 @@ func ParseSeverity(value string) (types.Severity, error) {
 	case string(types.SeverityError):
 		return types.SeverityError, nil
 	case "":
-		return types.SeverityInfo, fmt.Errorf("empty severity")
+		return "", fmt.Errorf("empty severity")
 	default:
-		return types.SeverityInfo, errors.New("unknown severity: " + value)
+		return "", errors.New("unknown severity: " + value)
 	}
 }
