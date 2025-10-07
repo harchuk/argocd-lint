@@ -58,7 +58,10 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 	pluginDirs := flags.StringSlice("plugin-dir", nil, "Directory of Rego plugin modules (repeatable, recursive)")
 	maxParallel := flags.Int("max-parallel", 0, "Maximum number of lint workers to run concurrently (0=CPU count)")
 	profiles := flags.StringSlice("profile", nil, "Apply built-in rule profiles (dev, prod, security, hardening)")
-	metricsFormat := flags.String("metrics", "", "Emit rule/severity summary (table|json)")
+	metricsFormat := flags.String("metrics", "", "Emit summary telemetry (table|json)")
+	baselinePath := flags.String("baseline", "", "Path to baseline JSON that suppresses known findings")
+	writeBaseline := flags.String("write-baseline", "", "Write current findings to baseline JSON")
+	baselineAging := flags.Int("baseline-aging", 0, "Report baseline entries older than N days")
 
 	if err := flags.Parse(args); err != nil {
 		printError(stderr, "argument", err)
@@ -95,6 +98,14 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 	if err := cfg.ApplyProfiles(*profiles...); err != nil {
 		printError(stderr, "profile", err)
 		return 2
+	}
+	var baseline *lint.Baseline
+	if *baselinePath != "" {
+		baseline, err = lint.LoadBaseline(*baselinePath)
+		if err != nil {
+			printError(stderr, "baseline", err)
+			return 2
+		}
 	}
 
 	wd, err := os.Getwd()
@@ -180,6 +191,8 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 		SeverityThreshold:      threshold,
 		DryRun:                 dryRunOpts,
 		MaxParallel:            *maxParallel,
+		Baseline:               baseline,
+		BaselineAgingDays:      *baselineAging,
 	}
 
 	start := time.Now()
@@ -197,6 +210,12 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 	if strings.TrimSpace(*metricsFormat) != "" {
 		if err := output.WriteMetrics(report, duration, *metricsFormat, stdout); err != nil {
 			printError(stderr, "metrics", err)
+			return 2
+		}
+	}
+	if *writeBaseline != "" {
+		if err := lint.WriteBaseline(*writeBaseline, report.Suppressed); err != nil {
+			printError(stderr, "baseline", err)
 			return 2
 		}
 	}

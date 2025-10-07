@@ -106,6 +106,9 @@ argocd-lint --version
 | `--max-parallel N` | Set the maximum number of concurrent lint workers (default = CPU count). |
 | `--metrics json` | Emit summary telemetry (runtime, severities, rule counts) alongside findings. |
 | `--profile dev` | Apply built-in rule profile presets (dev, prod, security, hardening). |
+| `--baseline path` | Load a baseline JSON to suppress known findings (with `--baseline-aging` for drift reports). |
+| `--write-baseline path` | Persist current findings as a baseline file for future runs. |
+| `--baseline-aging N` | Raise warnings for baseline entries older than `N` days. |
 | `plugins list` | Discover rule metadata (id, severity, applies-to, source) for curated/community bundles. |
 | `applicationset plan` | Preview generated Applications and drift (create/delete/unchanged) without hitting the API server. |
 
@@ -155,6 +158,28 @@ argocd-lint ./manifests --rules rules.yaml --format json
 - Discover curated metadata: `argocd-lint plugins list --dir bundles/core`.
 - Authoring guide & community checklist: [docs/PLUGINS.md](docs/PLUGINS.md).
 - Bundles live under `bundles/` (core, security, plus community submissions).
+
+### Waivers & baselines
+
+- Waivers allow temporary suppression of findings with mandatory `reason` and `expires`. Place them in your config:
+
+  ```yaml
+  waivers:
+    - rule: AR013
+      file: apps/legacy/*.yaml
+      reason: migrate repoURL to GitHub Enterprise
+      expires: 2025-12-31
+  ```
+
+- Expired or invalid waivers surface as `WAIVER_EXPIRED` / `WAIVER_INVALID` findings so they cannot be forgotten.
+- Baselines capture the current debt and let you review progress over time:
+
+  ```bash
+  argocd-lint ./apps --write-baseline .lint/baseline.json
+  argocd-lint ./apps --baseline .lint/baseline.json --baseline-aging 30
+  ```
+
+  The aging flag raises warnings for baseline entries that linger beyond the threshold.
 
 ### Rule profiles
 

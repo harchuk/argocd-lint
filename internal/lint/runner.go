@@ -32,12 +32,15 @@ type Options struct {
 	SeverityThreshold      string
 	DryRun                 dryrun.Options
 	MaxParallel            int
+	Baseline               *Baseline
+	BaselineAgingDays      int
 }
 
 // Report is the lint result collection.
 type Report struct {
-	Findings  []types.Finding
-	RuleIndex map[string]types.RuleMetadata
+	Findings   []types.Finding
+	RuleIndex  map[string]types.RuleMetadata
+	Suppressed []types.Finding
 }
 
 // Runner orchestrates parsing, validation, and rule checks.
@@ -123,6 +126,7 @@ func (r *Runner) Run(opts Options) (Report, error) {
 	}
 	ruleIndex[waiverExpiredMeta.ID] = waiverExpiredMeta
 	ruleIndex[waiverInvalidMeta.ID] = waiverInvalidMeta
+	ruleIndex[baselineAgedMeta.ID] = baselineAgedMeta
 	if r.plugins != nil {
 		for _, plug := range r.plugins.Plugins() {
 			meta := plug.Metadata()
@@ -294,6 +298,14 @@ func (r *Runner) Run(opts Options) (Report, error) {
 
 	filtered, waiverFindings := applyWaivers(r.cfg, findings, ruleIndex)
 	filtered = append(filtered, waiverFindings...)
+	var agedBaseline, suppressed []types.Finding
+	if opts.Baseline != nil {
+		baselineFiltered, aged, suppressedEntries := opts.Baseline.Filter(filtered, opts.BaselineAgingDays)
+		filtered = baselineFiltered
+		agedBaseline = aged
+		suppressed = suppressedEntries
+	}
+	filtered = append(filtered, agedBaseline...)
 	sort.SliceStable(filtered, func(i, j int) bool {
 		if filtered[i].FilePath == filtered[j].FilePath {
 			if filtered[i].Line == filtered[j].Line {
@@ -307,7 +319,7 @@ func (r *Runner) Run(opts Options) (Report, error) {
 		return filtered[i].FilePath < filtered[j].FilePath
 	})
 
-	return Report{Findings: filtered, RuleIndex: ruleIndex}, nil
+	return Report{Findings: filtered, RuleIndex: ruleIndex, Suppressed: suppressed}, nil
 }
 
 func includeManifest(m *manifest.Manifest, apps, appsets, projects bool) bool {
