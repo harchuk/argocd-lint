@@ -56,6 +56,7 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 	pluginFiles := flags.StringSlice("plugin", nil, "Path to a Rego plugin module (repeatable)")
 	pluginDirs := flags.StringSlice("plugin-dir", nil, "Directory of Rego plugin modules (repeatable, recursive)")
 	maxParallel := flags.Int("max-parallel", 0, "Maximum number of lint workers to run concurrently (0=CPU count)")
+	profiles := flags.StringSlice("profile", nil, "Apply built-in rule profiles (dev, prod, security, hardening)")
 
 	if err := flags.Parse(args); err != nil {
 		printError(stderr, "argument", err)
@@ -87,6 +88,10 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 	cfg, err := config.Load(*rulesPath)
 	if err != nil {
 		printError(stderr, "config", err)
+		return 2
+	}
+	if err := cfg.ApplyProfiles(*profiles...); err != nil {
+		printError(stderr, "profile", err)
 		return 2
 	}
 

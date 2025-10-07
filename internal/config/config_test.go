@@ -62,6 +62,55 @@ func TestConfigThreshold(t *testing.T) {
 	}
 }
 
+func TestApplyProfiles(t *testing.T) {
+	cfg := Config{}
+	if err := cfg.ApplyProfiles("prod"); err != nil {
+		t.Fatalf("apply profile: %v", err)
+	}
+	if cfg.Threshold != "error" {
+		t.Fatalf("expected threshold error, got %s", cfg.Threshold)
+	}
+	rule, ok := cfg.Rules["AR013"]
+	if !ok {
+		t.Fatalf("expected rule override for AR013")
+	}
+	if rule.Severity != "error" {
+		t.Fatalf("expected severity error, got %s", rule.Severity)
+	}
+	if err := cfg.ApplyProfiles("security"); err != nil {
+		t.Fatalf("apply additional profile: %v", err)
+	}
+	if cfg.Threshold != "error" {
+		t.Fatalf("expected threshold to remain error, got %s", cfg.Threshold)
+	}
+}
+
+func TestLoadAppliesProfilesFromConfig(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	content := []byte("profiles:\n  - dev\n  - security\n")
+	if err := os.WriteFile(path, content, 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("load config: %v", err)
+	}
+	if cfg.Threshold != "warn" {
+		t.Fatalf("expected dev threshold warn, got %s", cfg.Threshold)
+	}
+	if rule, ok := cfg.Rules["AR013"]; !ok || rule.Severity != "error" {
+		t.Fatalf("expected security profile to keep AR013 severity error")
+	}
+}
+
+func TestApplyProfilesUnknown(t *testing.T) {
+	cfg := Config{}
+	if err := cfg.ApplyProfiles("unknown"); err == nil {
+		t.Fatalf("expected error for unknown profile")
+	}
+}
+
 func TestParseSeverityErrors(t *testing.T) {
 	if sev, err := ParseSeverity("critical"); err == nil {
 		t.Fatalf("expected error on unknown severity")

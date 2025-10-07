@@ -8,6 +8,7 @@ All notable changes to this project are documented here. Dates reflect the commi
 - `argocd-lint applicationset plan` command for previewing generated Applications and reporting create/delete/unchanged drift before syncing (`e087d78`).
 - `argocd-lint plugins list` command plus metadata discovery helpers for curated/community bundles (`d796667`, `pkg/plugin/rego`).
 - Schema-version pinning via `--argocd-version`, AppProject guardrails, and richer multi-source Application validations (`de36265`).
+- Rule profiles (`dev`, `prod`, `security`, `hardening`) with CLI flag and SARIF severity alignment (`profiles` update).
 
 ### Changed
 - Human-facing CLI/table output now renders bordered tables with summaries and consistent error banners (`4b898ec`).

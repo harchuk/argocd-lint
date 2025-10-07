@@ -193,7 +193,7 @@ func writeSARIF(report lint.Report, w io.Writer) error {
 
 	results := make([]sarifResult, 0, len(report.Findings))
 	for _, finding := range report.Findings {
-		res := sarifResult{RuleID: finding.RuleID, Level: string(finding.Severity)}
+		res := sarifResult{RuleID: finding.RuleID, Level: sarifSeverity(finding.Severity)}
 		res.Message.Text = finding.Message
 		location := struct {
 			PhysicalLocation struct {
@@ -256,6 +256,17 @@ func HighestSeverity(findings []types.Finding) types.Severity {
 		highest = types.HigherSeverity(highest, f.Severity)
 	}
 	return highest
+}
+
+func sarifSeverity(sev types.Severity) string {
+	switch strings.ToLower(string(sev)) {
+	case string(types.SeverityError):
+		return "error"
+	case string(types.SeverityWarn):
+		return "warning"
+	default:
+		return "note"
+	}
 }
 
 // SummaryString generates a short textual summary.

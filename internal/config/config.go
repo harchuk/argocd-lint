@@ -29,6 +29,7 @@ type Config struct {
 	Overrides []Override            `yaml:"overrides"`
 	Threshold string                `yaml:"severityThreshold"`
 	Policies  PolicyConfig          `yaml:"policies"`
+	Profiles  []string              `yaml:"profiles"`
 }
 
 // PolicyConfig captures additional governance settings.
@@ -53,6 +54,10 @@ func Load(path string) (Config, error) {
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return Config{}, fmt.Errorf("parse config: %w", err)
 	}
+	if err := cfg.ApplyProfiles(cfg.Profiles...); err != nil {
+		return Config{}, err
+	}
+	cfg.Profiles = append([]string(nil), cfg.Profiles...)
 	return cfg, nil
 }
 

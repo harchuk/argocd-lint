@@ -104,6 +104,7 @@ argocd-lint --version
 | `--argocd-version v2.8` | Pin schema validation to a specific Argo CD release. |
 | `--render-cache` | Cache successful render results to avoid re-running Helm/Kustomize on identical sources. |
 | `--max-parallel N` | Set the maximum number of concurrent lint workers (default = CPU count). |
+| `--profile dev` | Apply built-in rule profile presets (dev, prod, security, hardening). |
 | `plugins list` | Discover rule metadata (id, severity, applies-to, source) for curated/community bundles. |
 | `applicationset plan` | Preview generated Applications and drift (create/delete/unchanged) without hitting the API server. |
 
@@ -153,6 +154,21 @@ argocd-lint ./manifests --rules rules.yaml --format json
 - Discover curated metadata: `argocd-lint plugins list --dir bundles/core`.
 - Authoring guide & community checklist: [docs/PLUGINS.md](docs/PLUGINS.md).
 - Bundles live under `bundles/` (core, security, plus community submissions).
+
+### Rule profiles
+
+Use built-in presets instead of hand-writing overrides:
+
+```bash
+argocd-lint ./manifests --profile prod --profile security
+```
+
+- `dev` – relaxed severities suitable for preview environments.
+- `prod` – escalates drift/security findings (`targetRevision`, `ignoreDifferences`, repo policy).
+- `security` – focuses on repoURL/project access hardening.
+- `hardening` – combines production and security escalations for regulated workloads.
+
+Profiles stack, so you can compose `--profile dev --profile security` for custom blends. Profiles also map to SARIF severities so PR reports stay actionable.
 
 ## ApplicationSet drift preview
 
