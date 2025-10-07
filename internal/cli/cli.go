@@ -46,6 +46,7 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 	helmBinary := flags.String("helm-binary", "helm", "Helm binary to use for rendering")
 	kustomizeBinary := flags.String("kustomize-binary", "kustomize", "Kustomize binary to use for rendering")
 	repoRoot := flags.String("repo-root", "", "Override repository root for resolving source paths when rendering")
+	renderCache := flags.Bool("render-cache", false, "Cache render results for identical sources during a run")
 	showVersion := flags.Bool("version", false, "Print argocd-lint version and exit")
 	dryRunMode := flags.String("dry-run", "", "Perform extended validation: kubeconform|server")
 	kubeconfig := flags.String("kubeconfig", "", "Path to kubeconfig for server-side dry-run")
@@ -54,6 +55,7 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 	kubeconformBinary := flags.String("kubeconform-binary", "kubeconform", "kubeconform binary for schema validation")
 	pluginFiles := flags.StringSlice("plugin", nil, "Path to a Rego plugin module (repeatable)")
 	pluginDirs := flags.StringSlice("plugin-dir", nil, "Directory of Rego plugin modules (repeatable, recursive)")
+	maxParallel := flags.Int("max-parallel", 0, "Maximum number of lint workers to run concurrently (0=CPU count)")
 
 	if err := flags.Parse(args); err != nil {
 		printError(stderr, "argument", err)
@@ -143,6 +145,7 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 		HelmBinary:      *helmBinary,
 		KustomizeBinary: *kustomizeBinary,
 		RepoRoot:        root,
+		CacheEnabled:    *renderCache,
 	}
 
 	dryRunOpts := dryrun.Options{
@@ -169,6 +172,7 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 		Render:                 renderOpts,
 		SeverityThreshold:      threshold,
 		DryRun:                 dryRunOpts,
+		MaxParallel:            *maxParallel,
 	}
 
 	report, err := runner.Run(opts)

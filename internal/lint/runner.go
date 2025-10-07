@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"runtime"
 	"sort"
+	"sync"
+	"sync/atomic"
 
 	"github.com/argocd-lint/argocd-lint/internal/config"
 	"github.com/argocd-lint/argocd-lint/internal/dryrun"
@@ -28,6 +31,7 @@ type Options struct {
 	Render                 render.Options
 	SeverityThreshold      string
 	DryRun                 dryrun.Options
+	MaxParallel            int
 }
 
 // Report is the lint result collection.
@@ -144,20 +148,64 @@ func (r *Runner) Run(opts Options) (Report, error) {
 		}
 	}
 
-	for _, m := range included {
-		schemaFindings, err := r.schema.Validate(m)
-		if err != nil {
-			return Report{}, err
+	maxParallel := opts.MaxParallel
+	if maxParallel <= 0 {
+		maxParallel = runtime.NumCPU()
+		if maxParallel < 1 {
+			maxParallel = 1
 		}
-		findings = append(findings, schemaFindings...)
-
-		if renderer != nil {
-			renderFindings, err := renderer.Render(m)
-			if err != nil {
-				return Report{}, err
+	}
+	sem := make(chan struct{}, maxParallel)
+	var wg sync.WaitGroup
+	var findingsMu sync.Mutex
+	var firstErr error
+	var errOnce sync.Once
+	var errFlag atomic.Bool
+	setErr := func(err error) {
+		if err == nil {
+			return
+		}
+		errOnce.Do(func() {
+			firstErr = err
+			errFlag.Store(true)
+		})
+	}
+	for _, manifest := range included {
+		m := manifest
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if errFlag.Load() {
+				return
 			}
-			findings = append(findings, renderFindings...)
-		}
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			if errFlag.Load() {
+				return
+			}
+			localFindings := make([]types.Finding, 0, 4)
+			schemaFindings, err := r.schema.Validate(m)
+			if err != nil {
+				setErr(err)
+				return
+			}
+			localFindings = append(localFindings, schemaFindings...)
+			if renderer != nil {
+				renderFindings, err := renderer.Render(m)
+				if err != nil {
+					setErr(err)
+					return
+				}
+				localFindings = append(localFindings, renderFindings...)
+			}
+			findingsMu.Lock()
+			findings = append(findings, localFindings...)
+			findingsMu.Unlock()
+		}()
+	}
+	wg.Wait()
+	if firstErr != nil {
+		return Report{}, firstErr
 	}
 
 	if dryRunValidator != nil {

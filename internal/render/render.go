@@ -1,12 +1,14 @@
 package render
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/argocd-lint/argocd-lint/internal/config"
 	"github.com/argocd-lint/argocd-lint/internal/manifest"
@@ -19,6 +21,7 @@ type Options struct {
 	HelmBinary      string
 	KustomizeBinary string
 	RepoRoot        string
+	CacheEnabled    bool
 }
 
 // Renderer executes Helm/Kustomize renders and reports findings when they fail.
@@ -27,6 +30,14 @@ type Renderer struct {
 	helmBinary      string
 	kustomizeBinary string
 	repoRoot        string
+	cacheEnabled    bool
+	cacheMu         sync.Mutex
+	cache           map[string]renderCacheEntry
+}
+
+type renderCacheEntry struct {
+	findings []types.Finding
+	err      error
 }
 
 var (
@@ -81,6 +92,8 @@ func NewRenderer(cfg config.Config, opts Options) (*Renderer, error) {
 		helmBinary:      helmBin,
 		kustomizeBinary: kustomizeBin,
 		repoRoot:        repoRoot,
+		cacheEnabled:    opts.CacheEnabled,
+		cache:           make(map[string]renderCacheEntry),
 	}, nil
 }
 
@@ -148,6 +161,13 @@ func (r *Renderer) renderHelm(path string, src map[string]interface{}, m *manife
 	if !cfg.Enabled || r.helmBinary == "" {
 		return nil, nil
 	}
+	cacheKey := ""
+	if r.cacheEnabled {
+		cacheKey = renderCacheKey("helm", path, src)
+		if findings, err, ok := r.lookupCache(cacheKey); ok {
+			return cloneFindings(findings), err
+		}
+	}
 	args := []string{"template", "argocd-lint-render", "."}
 	helmCfg := getMap(src, "helm")
 	valueFiles := getSlice(helmCfg, "valueFiles")
@@ -179,6 +199,9 @@ func (r *Renderer) renderHelm(path string, src map[string]interface{}, m *manife
 	cmd.Dir = path
 	output, err := cmd.CombinedOutput()
 	if err == nil {
+		if r.cacheEnabled {
+			r.storeCache(cacheKey, nil, nil)
+		}
 		return nil, nil
 	}
 	builder := types.FindingBuilder{
@@ -193,7 +216,11 @@ func (r *Renderer) renderHelm(path string, src map[string]interface{}, m *manife
 	if trimmed != "" {
 		msg = fmt.Sprintf("%s: %s", msg, trimmed)
 	}
-	return []types.Finding{builder.NewFinding(msg, cfg.Severity)}, nil
+	result := []types.Finding{builder.NewFinding(msg, cfg.Severity)}
+	if r.cacheEnabled {
+		r.storeCache(cacheKey, result, nil)
+	}
+	return result, nil
 }
 
 func (r *Renderer) renderKustomize(path string, m *manifest.Manifest) ([]types.Finding, error) {
@@ -204,10 +231,20 @@ func (r *Renderer) renderKustomize(path string, m *manifest.Manifest) ([]types.F
 	if !cfg.Enabled || r.kustomizeBinary == "" {
 		return nil, nil
 	}
+	cacheKey := ""
+	if r.cacheEnabled {
+		cacheKey = renderCacheKey("kustomize", path, nil)
+		if findings, err, ok := r.lookupCache(cacheKey); ok {
+			return cloneFindings(findings), err
+		}
+	}
 	cmd := exec.Command(r.kustomizeBinary, "build", path)
 	cmd.Dir = path
 	output, err := cmd.CombinedOutput()
 	if err == nil {
+		if r.cacheEnabled {
+			r.storeCache(cacheKey, nil, nil)
+		}
 		return nil, nil
 	}
 	builder := types.FindingBuilder{
@@ -222,7 +259,11 @@ func (r *Renderer) renderKustomize(path string, m *manifest.Manifest) ([]types.F
 	if trimmed != "" {
 		msg = fmt.Sprintf("%s: %s", msg, trimmed)
 	}
-	return []types.Finding{builder.NewFinding(msg, cfg.Severity)}, nil
+	result := []types.Finding{builder.NewFinding(msg, cfg.Severity)}
+	if r.cacheEnabled {
+		r.storeCache(cacheKey, result, nil)
+	}
+	return result, nil
 }
 
 func (r *Renderer) shouldRenderHelm(src map[string]interface{}, path string) bool {
@@ -291,6 +332,52 @@ func trimOutput(output []byte) string {
 		return trimmed[:280] + "..."
 	}
 	return trimmed
+}
+
+func (r *Renderer) lookupCache(key string) ([]types.Finding, error, bool) {
+	if !r.cacheEnabled || key == "" {
+		return nil, nil, false
+	}
+	r.cacheMu.Lock()
+	entry, ok := r.cache[key]
+	r.cacheMu.Unlock()
+	if !ok {
+		return nil, nil, false
+	}
+	return entry.findings, entry.err, true
+}
+
+func (r *Renderer) storeCache(key string, findings []types.Finding, err error) {
+	if !r.cacheEnabled || key == "" {
+		return
+	}
+	clone := cloneFindings(findings)
+	r.cacheMu.Lock()
+	r.cache[key] = renderCacheEntry{findings: clone, err: err}
+	r.cacheMu.Unlock()
+}
+
+func renderCacheKey(kind, path string, payload map[string]interface{}) string {
+	if path == "" {
+		path = "<unknown>"
+	}
+	if payload == nil {
+		return fmt.Sprintf("%s|%s", kind, path)
+	}
+	encoded, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Sprintf("%s|%s", kind, path)
+	}
+	return fmt.Sprintf("%s|%s|%s", kind, path, string(encoded))
+}
+
+func cloneFindings(src []types.Finding) []types.Finding {
+	if len(src) == 0 {
+		return nil
+	}
+	clone := make([]types.Finding, len(src))
+	copy(clone, src)
+	return clone
 }
 
 func exists(path string) bool {

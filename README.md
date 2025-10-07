@@ -42,6 +42,7 @@
 - **Opinionated rules** – curated best practices cover revisions, destinations, labels, and multi-source pitfalls.
 - **Extensible** – plug in Rego modules, discover their metadata, and curate bundles for teams.
 - **Render & validate** – optional Helm/Kustomize rendering plus kubeconform/server dry-run modes.
+- **Fast feedback** – parallel lint workers and optional render caching keep mono-repos snappy.
 - **Single binary** – formatted tables, JSON, and SARIF outputs with zero runtime dependencies.
 
 ## Install
@@ -101,6 +102,8 @@ argocd-lint --version
 | `--render` | Render Helm/Kustomize sources before linting. |
 | `--dry-run=kubeconform|server` | Validate rendered resources using kubeconform or the API server. |
 | `--argocd-version v2.8` | Pin schema validation to a specific Argo CD release. |
+| `--render-cache` | Cache successful render results to avoid re-running Helm/Kustomize on identical sources. |
+| `--max-parallel N` | Set the maximum number of concurrent lint workers (default = CPU count). |
 | `plugins list` | Discover rule metadata (id, severity, applies-to, source) for curated/community bundles. |
 | `applicationset plan` | Preview generated Applications and drift (create/delete/unchanged) without hitting the API server. |
 
