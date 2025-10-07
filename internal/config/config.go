@@ -30,6 +30,7 @@ type Config struct {
 	Threshold string                `yaml:"severityThreshold"`
 	Policies  PolicyConfig          `yaml:"policies"`
 	Profiles  []string              `yaml:"profiles"`
+	Waivers   []Waiver              `yaml:"waivers"`
 }
 
 // PolicyConfig captures additional governance settings.
@@ -58,6 +59,11 @@ func Load(path string) (Config, error) {
 		return Config{}, err
 	}
 	cfg.Profiles = append([]string(nil), cfg.Profiles...)
+	for i := range cfg.Waivers {
+		if err := cfg.Waivers[i].Validate(); err != nil {
+			return Config{}, fmt.Errorf("waiver %d: %w", i, err)
+		}
+	}
 	return cfg, nil
 }
 

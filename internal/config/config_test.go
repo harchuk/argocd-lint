@@ -111,6 +111,17 @@ func TestApplyProfilesUnknown(t *testing.T) {
 	}
 }
 
+func TestWaiverValidation(t *testing.T) {
+	good := Waiver{Rule: "AR001", File: "apps/*.yaml", Reason: "migration", Expires: "2099-01-01"}
+	if err := good.Validate(); err != nil {
+		t.Fatalf("expected valid waiver, got %v", err)
+	}
+	bad := Waiver{Rule: "", File: "*.yaml", Reason: "", Expires: "yesterday"}
+	if err := bad.Validate(); err == nil {
+		t.Fatalf("expected validation error")
+	}
+}
+
 func TestParseSeverityErrors(t *testing.T) {
 	if sev, err := ParseSeverity("critical"); err == nil {
 		t.Fatalf("expected error on unknown severity")

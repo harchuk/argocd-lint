@@ -121,6 +121,8 @@ func (r *Runner) Run(opts Options) (Report, error) {
 	for _, rl := range r.rules {
 		ruleIndex[rl.Metadata.ID] = rl.Metadata
 	}
+	ruleIndex[waiverExpiredMeta.ID] = waiverExpiredMeta
+	ruleIndex[waiverInvalidMeta.ID] = waiverInvalidMeta
 	if r.plugins != nil {
 		for _, plug := range r.plugins.Plugins() {
 			meta := plug.Metadata()
@@ -290,7 +292,22 @@ func (r *Runner) Run(opts Options) (Report, error) {
 		return findings[i].FilePath < findings[j].FilePath
 	})
 
-	return Report{Findings: findings, RuleIndex: ruleIndex}, nil
+	filtered, waiverFindings := applyWaivers(r.cfg, findings, ruleIndex)
+	filtered = append(filtered, waiverFindings...)
+	sort.SliceStable(filtered, func(i, j int) bool {
+		if filtered[i].FilePath == filtered[j].FilePath {
+			if filtered[i].Line == filtered[j].Line {
+				if filtered[i].RuleID == filtered[j].RuleID {
+					return filtered[i].Message < filtered[j].Message
+				}
+				return filtered[i].RuleID < filtered[j].RuleID
+			}
+			return filtered[i].Line < filtered[j].Line
+		}
+		return filtered[i].FilePath < filtered[j].FilePath
+	})
+
+	return Report{Findings: filtered, RuleIndex: ruleIndex}, nil
 }
 
 func includeManifest(m *manifest.Manifest, apps, appsets, projects bool) bool {
