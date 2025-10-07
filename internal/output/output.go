@@ -19,6 +19,21 @@ const (
 	FormatSARIF = "sarif"
 )
 
+// Metrics summarizes lint output for telemetry purposes.
+type Metrics struct {
+	DurationMillis int64         `json:"durationMillis"`
+	TotalFindings  int           `json:"totalFindings"`
+	BySeverity     map[string]int `json:"bySeverity"`
+	ByRule         []RuleMetric  `json:"byRule"`
+}
+
+// RuleMetric captures the count for a specific rule.
+type RuleMetric struct {
+	RuleID   string `json:"ruleId"`
+	Count    int    `json:"count"`
+	Severity string `json:"severity"`
+}
+
 // Write renders the report to the writer using the requested format.
 func Write(report lint.Report, format string, w io.Writer) error {
 	switch strings.ToLower(format) {
@@ -256,6 +271,81 @@ func HighestSeverity(findings []types.Finding) types.Severity {
 		highest = types.HigherSeverity(highest, f.Severity)
 	}
 	return highest
+}
+
+// WriteMetrics emits aggregated metrics using the requested format.
+func WriteMetrics(report lint.Report, duration time.Duration, format string, w io.Writer) error {
+	metrics := computeMetrics(report, duration)
+	switch strings.ToLower(strings.TrimSpace(format)) {
+	case "json":
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		return enc.Encode(metrics)
+	case "", "table":
+		return writeMetricsTable(metrics, w)
+	default:
+		return fmt.Errorf("unsupported metrics format %q", format)
+	}
+}
+
+func computeMetrics(report lint.Report, duration time.Duration) Metrics {
+	metrics := Metrics{
+		DurationMillis: duration.Milliseconds(),
+		TotalFindings:  len(report.Findings),
+		BySeverity:     map[string]int{},
+	}
+	counts := map[string]int{}
+	for _, f := range report.Findings {
+		sev := strings.ToLower(string(f.Severity))
+		if sev == "" {
+			sev = string(types.SeverityInfo)
+		}
+		metrics.BySeverity[sev]++
+		counts[f.RuleID]++
+	}
+	metrics.ByRule = make([]RuleMetric, 0, len(counts))
+	for ruleID, count := range counts {
+		sev := report.RuleIndex[ruleID].DefaultSeverity
+		metrics.ByRule = append(metrics.ByRule, RuleMetric{RuleID: ruleID, Count: count, Severity: string(sev)})
+	}
+	sort.Slice(metrics.ByRule, func(i, j int) bool {
+		if metrics.ByRule[i].Count == metrics.ByRule[j].Count {
+			return metrics.ByRule[i].RuleID < metrics.ByRule[j].RuleID
+		}
+		return metrics.ByRule[i].Count > metrics.ByRule[j].Count
+	})
+	return metrics
+}
+
+func writeMetricsTable(metrics Metrics, w io.Writer) error {
+	if _, err := fmt.Fprintf(w, "\nMetrics: runtime=%dms, findings=%d\n", metrics.DurationMillis, metrics.TotalFindings); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(w, "By severity:"); err != nil {
+		return err
+	}
+	keys := make([]string, 0, len(metrics.BySeverity))
+	for sev := range metrics.BySeverity {
+		keys = append(keys, sev)
+	}
+	sort.Strings(keys)
+	for _, sev := range keys {
+		if _, err := fmt.Fprintf(w, "  %-7s %d\n", sev, metrics.BySeverity[sev]); err != nil {
+			return err
+		}
+	}
+	if len(metrics.ByRule) == 0 {
+		return nil
+	}
+	if _, err := fmt.Fprintln(w, "By rule:"); err != nil {
+		return err
+	}
+	for _, rule := range metrics.ByRule {
+		if _, err := fmt.Fprintf(w, "  %-8s %3d (%s)\n", rule.RuleID, rule.Count, rule.Severity); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func sarifSeverity(sev types.Severity) string {

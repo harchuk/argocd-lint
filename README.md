@@ -104,6 +104,7 @@ argocd-lint --version
 | `--argocd-version v2.8` | Pin schema validation to a specific Argo CD release. |
 | `--render-cache` | Cache successful render results to avoid re-running Helm/Kustomize on identical sources. |
 | `--max-parallel N` | Set the maximum number of concurrent lint workers (default = CPU count). |
+| `--metrics json` | Emit summary telemetry (runtime, severities, rule counts) alongside findings. |
 | `--profile dev` | Apply built-in rule profile presets (dev, prod, security, hardening). |
 | `plugins list` | Discover rule metadata (id, severity, applies-to, source) for curated/community bundles. |
 | `applicationset plan` | Preview generated Applications and drift (create/delete/unchanged) without hitting the API server. |

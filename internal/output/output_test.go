@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/argocd-lint/argocd-lint/internal/lint"
 	"github.com/argocd-lint/argocd-lint/pkg/types"
@@ -128,5 +129,35 @@ func TestSummaryString(t *testing.T) {
 	}
 	if !strings.Contains(summary, "2 warn") {
 		t.Fatalf("expected warn count in summary")
+	}
+}
+
+func TestWriteMetricsTable(t *testing.T) {
+	report := sampleReport()
+	var buf bytes.Buffer
+	if err := WriteMetrics(report, 123*time.Millisecond, "table", &buf); err != nil {
+		t.Fatalf("write metrics: %v", err)
+	}
+	output := buf.String()
+	if !strings.Contains(output, "findings=1") {
+		t.Fatalf("expected findings count in metrics output")
+	}
+	if !strings.Contains(strings.ToLower(output), "warn") {
+		t.Fatalf("expected severity bucket in metrics output")
+	}
+}
+
+func TestWriteMetricsJSON(t *testing.T) {
+	report := sampleReport()
+	var buf bytes.Buffer
+	if err := WriteMetrics(report, 200*time.Millisecond, "json", &buf); err != nil {
+		t.Fatalf("write metrics json: %v", err)
+	}
+	var payload map[string]interface{}
+	if err := json.Unmarshal(buf.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal metrics json: %v", err)
+	}
+	if payload["totalFindings"].(float64) != 1 {
+		t.Fatalf("expected totalFindings=1")
 	}
 }

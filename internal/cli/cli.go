@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/argocd-lint/argocd-lint/internal/appsetplan"
 	"github.com/argocd-lint/argocd-lint/internal/config"
@@ -57,6 +58,7 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 	pluginDirs := flags.StringSlice("plugin-dir", nil, "Directory of Rego plugin modules (repeatable, recursive)")
 	maxParallel := flags.Int("max-parallel", 0, "Maximum number of lint workers to run concurrently (0=CPU count)")
 	profiles := flags.StringSlice("profile", nil, "Apply built-in rule profiles (dev, prod, security, hardening)")
+	metricsFormat := flags.String("metrics", "", "Emit rule/severity summary (table|json)")
 
 	if err := flags.Parse(args); err != nil {
 		printError(stderr, "argument", err)
@@ -180,15 +182,23 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 		MaxParallel:            *maxParallel,
 	}
 
+	start := time.Now()
 	report, err := runner.Run(opts)
 	if err != nil {
 		printError(stderr, "lint", err)
 		return 2
 	}
+	duration := time.Since(start)
 
 	if err := output.Write(report, *format, stdout); err != nil {
 		printError(stderr, "output", err)
 		return 2
+	}
+	if strings.TrimSpace(*metricsFormat) != "" {
+		if err := output.WriteMetrics(report, duration, *metricsFormat, stdout); err != nil {
+			printError(stderr, "metrics", err)
+			return 2
+		}
 	}
 
 	thresholdValue := opts.SeverityThreshold

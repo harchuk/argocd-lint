@@ -15,12 +15,12 @@
 - Documented community bundle submission guidelines.
 - Added `argocd-lint plugins list` metadata explorer for curated policy bundles.
 - Shipped `argocd-lint applicationset plan` preview for ApplicationSet drift estimation.
+- Added render caching, parallel workers, rule profiles, and metrics summaries for faster telemetry-driven linting.
 
 ## Upcoming Enhancements
 
 - **Security & governance rules**: more out-of-the-box checks covering repoURL protocol/domain whitelists and Argo CD Project destination enforcement.
 - **Environment profiles**: ship rule presets for dev/prod/ephemeral environments, building on the existing overrides demo.
-- **Telemetry & performance**: opt-in metrics flag summarising rule breaches plus parallel render/cache options for large mono-repos.
 - **CMP hardening guide**: publish a hardened Config Management Plugin image example with seccomp, read-only filesystem, and capability drops.
 - **Compatibility matrix**: document and test supported Argo CD/CRD/Helm/Kustomize combinations with versioned fixtures.
 - **Performance targets**: render caching, parallel execution, tunable limits—goal: average repo lint ≤ 60s.
