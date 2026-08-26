@@ -72,7 +72,11 @@
         },
         "applicationCore": {
           "type": "object",
-          "required": ["destination", "source", "project"],
+          "required": ["destination", "project"],
+          "oneOf": [
+            {"required": ["source"]},
+            {"required": ["sources"]}
+          ],
           "properties": {
             "project": {"type": "string"},
             "destination": {
