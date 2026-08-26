@@ -72,10 +72,12 @@ func TestSchemaValidatorAcceptsValidApplicationSet(t *testing.T) {
 							"server":    "https://example.com",
 							"namespace": "demo",
 						},
-						"source": map[string]interface{}{
-							"repoURL":        "https://example.com/repo.git",
-							"targetRevision": "v1.0.0",
-							"path":           "app",
+						"sources": []interface{}{
+							map[string]interface{}{
+								"repoURL":        "https://example.com/repo.git",
+								"targetRevision": "v1.0.0",
+								"path":           "app",
+							},
 						},
 					},
 				},
