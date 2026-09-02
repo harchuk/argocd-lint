@@ -24,6 +24,8 @@ var baselineAgedMeta = types.RuleMetadata{
 type BaselineEntry struct {
 	Rule       string `json:"rule"`
 	File       string `json:"file"`
+	Resource   string `json:"resource,omitempty"`
+	Kind       string `json:"kind,omitempty"`
 	Introduced string `json:"introduced,omitempty"`
 }
 
@@ -54,8 +56,10 @@ func LoadBaseline(path string) (*Baseline, error) {
 	}
 	bl := &Baseline{Entries: entries, index: make(map[string]BaselineEntry)}
 	for _, entry := range entries {
-		key := baselineKey(entry.File, entry.Rule)
+		key := baselineKey(entry.File, entry.Rule, entry.Kind, entry.Resource)
 		bl.index[key] = entry
+		// Keep legacy baselines (file + rule) working during migration.
+		bl.index[baselineKey(entry.File, entry.Rule, "", "")] = entry
 	}
 	return bl, nil
 }
@@ -73,7 +77,7 @@ func WriteBaseline(path string, findings []types.Finding) error {
 	entries := make([]BaselineEntry, 0, len(findings))
 	seen := map[string]struct{}{}
 	for _, f := range findings {
-		key := baselineKey(f.FilePath, f.RuleID)
+		key := baselineKey(f.FilePath, f.RuleID, f.ResourceKind, f.ResourceName)
 		if _, ok := seen[key]; ok {
 			continue
 		}
@@ -81,6 +85,8 @@ func WriteBaseline(path string, findings []types.Finding) error {
 		entries = append(entries, BaselineEntry{
 			Rule:       f.RuleID,
 			File:       f.FilePath,
+			Resource:   f.ResourceName,
+			Kind:       f.ResourceKind,
 			Introduced: now,
 		})
 	}
@@ -107,8 +113,11 @@ func (b *Baseline) Filter(findings []types.Finding, agingDays int) ([]types.Find
 	suppressed := []types.Finding{}
 	result := make([]types.Finding, 0, len(findings))
 	for _, f := range findings {
-		key := baselineKey(f.FilePath, f.RuleID)
+		key := baselineKey(f.FilePath, f.RuleID, f.ResourceKind, f.ResourceName)
 		entry, ok := b.index[key]
+		if !ok {
+			entry, ok = b.index[baselineKey(f.FilePath, f.RuleID, "", "")]
+		}
 		if !ok {
 			result = append(result, f)
 			continue
@@ -129,6 +138,6 @@ func (b *Baseline) Filter(findings []types.Finding, agingDays int) ([]types.Find
 	return result, aged, suppressed
 }
 
-func baselineKey(file, rule string) string {
-	return strings.ToLower(strings.TrimSpace(file)) + "|" + strings.ToLower(strings.TrimSpace(rule))
+func baselineKey(file, rule, kind, resource string) string {
+	return strings.ToLower(strings.TrimSpace(file)) + "|" + strings.ToLower(strings.TrimSpace(rule)) + "|" + strings.ToLower(strings.TrimSpace(kind)) + "|" + strings.ToLower(strings.TrimSpace(resource))
 }
