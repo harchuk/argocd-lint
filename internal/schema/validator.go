@@ -16,9 +16,11 @@ var (
 	schemaFiles embed.FS
 
 	supportedVersions = map[string]string{
-		"":     "v2.9",
-		"v2.9": "v2.9",
-		"v2.8": "v2.8",
+		"":       "v2.9",
+		"v2.9":   "v2.9",
+		"v2.8":   "v2.8",
+		"v3.5":   "v3.5.2",
+		"v3.5.2": "v3.5.2",
 	}
 )
 
