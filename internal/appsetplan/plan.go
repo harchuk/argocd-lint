@@ -9,9 +9,9 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
-	"github.com/argocd-lint/argocd-lint/internal/loader"
-	"github.com/argocd-lint/argocd-lint/internal/manifest"
-	"github.com/argocd-lint/argocd-lint/pkg/types"
+	"github.com/harchuk/argocd-lint/internal/loader"
+	"github.com/harchuk/argocd-lint/internal/manifest"
+	"github.com/harchuk/argocd-lint/pkg/types"
 	"gopkg.in/yaml.v3"
 )
 

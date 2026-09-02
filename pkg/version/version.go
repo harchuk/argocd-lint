@@ -4,7 +4,7 @@ import "fmt"
 
 var (
 	// Version is the semantic version of the binary.
-	Version = "0.1.0"
+	Version = "0.2.0"
 	// GitCommit is populated via -ldflags at build time.
 	GitCommit = "dev"
 	// BuildDate is RFC3339 timestamp injected at build time.

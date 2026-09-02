@@ -2,8 +2,6 @@ name: Release
 
 on:
   push:
-    branches:
-      - main
     tags:
       - 'v*'
   workflow_dispatch:
@@ -14,6 +12,24 @@ permissions:
   id-token: write
 
 jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.8'
+      - name: Verify
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
+          gofmt -l $(find . -name '*.go' -not -path './vendor/*') | tee /tmp/gofmt-files
+          test ! -s /tmp/gofmt-files
+          go test ./...
+          go build ./...
+
   prepare:
     runs-on: ubuntu-latest
     outputs:
@@ -44,7 +60,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    needs: prepare
+    needs: [prepare, verify]
     strategy:
       matrix:
         goos: [linux, darwin, windows]
@@ -56,7 +72,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.26.8'
 
       - name: Build
         env:
@@ -70,7 +86,7 @@ jobs:
             EXT=".exe"
           fi
           OUTPUT="dist/argocd-lint-${GOOS}-${GOARCH}${EXT}"
-          LDFLAGS="-X github.com/argocd-lint/argocd-lint/pkg/version.Version=${VERSION} -X github.com/argocd-lint/argocd-lint/pkg/version.GitCommit=${GITHUB_SHA} -X github.com/argocd-lint/argocd-lint/pkg/version.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          LDFLAGS="-X github.com/harchuk/argocd-lint/pkg/version.Version=${VERSION} -X github.com/harchuk/argocd-lint/pkg/version.GitCommit=${GITHUB_SHA} -X github.com/harchuk/argocd-lint/pkg/version.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           go build -ldflags "$LDFLAGS" -o "$OUTPUT" ./cmd/argocd-lint
 
       - name: Upload artifact
@@ -84,6 +100,7 @@ jobs:
     needs:
       - prepare
       - build
+      - verify
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -92,6 +109,7 @@ jobs:
 
       - name: Generate checksums
         run: |
+          scripts/package-plugin-bundles.sh dist
           cd dist
           find . -type f -exec sha256sum {} \; > checksums.txt
 
@@ -116,6 +134,7 @@ jobs:
     needs:
       - prepare
       - build
+      - verify
     steps:
       - name: Checkout
         uses: actions/checkout@v4

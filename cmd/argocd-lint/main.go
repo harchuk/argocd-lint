@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/argocd-lint/argocd-lint/internal/cli"
+	"github.com/harchuk/argocd-lint/internal/cli"
 )
 
 func main() {

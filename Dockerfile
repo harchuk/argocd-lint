@@ -1,4 +1,4 @@
-FROM golang:1.22-alpine AS builder
+FROM golang:1.26.8-alpine AS builder
 WORKDIR /src
 COPY . .
 RUN go build -ldflags "-s -w" -o /out/argocd-lint ./cmd/argocd-lint

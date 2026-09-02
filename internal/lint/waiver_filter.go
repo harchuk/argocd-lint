@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/argocd-lint/argocd-lint/internal/config"
-	"github.com/argocd-lint/argocd-lint/pkg/types"
+	"github.com/harchuk/argocd-lint/internal/config"
+	"github.com/harchuk/argocd-lint/pkg/types"
 )
 
 var waiverExpiredMeta = types.RuleMetadata{

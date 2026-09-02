@@ -25,10 +25,16 @@ data:
             THRESHOLD=${ARGOCD_LINT_THRESHOLD:-error}
             PLUGIN_ARGS=${ARGOCD_LINT_ARGS:-}
 
-            argocd-lint "$ARGOCD_APP_BASE_DIR" \
+            lint_output=$(mktemp)
+            trap 'rm -f "$lint_output"' EXIT
+            if ! argocd-lint "$ARGOCD_APP_BASE_DIR" \
               --severity-threshold="$THRESHOLD" \
               --plugin-dir /opt/argocd-lint/bundles/core \
-              $PLUGIN_ARGS
+              $PLUGIN_ARGS >"$lint_output"; then
+              cat "$lint_output" >&2
+              exit 1
+            fi
+            cat "$lint_output" >&2
 
             find "$ARGOCD_APP_BASE_DIR" -type f \( -name '*.yaml' -o -name '*.yml' \) \
               -print0 | xargs -0 -I{} sh -c 'echo "---"; cat "{}"'

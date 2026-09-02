@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. Dates reflect the commit timestamps on `main`.
 
+## [Unreleased]
+
+### Fixed
+- Treat `--help` as a successful CLI invocation instead of an argument error.
+- Make `--write-baseline` persist the current findings, including findings not yet suppressed by a baseline.
+- Restore `gofmt` compliance for the output metrics type.
+- Synchronize the module/import path with the public repository and refresh OPA/OpenTelemetry dependencies.
+- Update CI and the container build to Go 1.26.8.
+- Keep repo-server CMP linter diagnostics on stderr so generated manifests remain valid plugin output.
+
 ## [0.2.0] - 2025-10-05
 
 ### Added

@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/argocd-lint/argocd-lint/pkg/types"
+	"github.com/harchuk/argocd-lint/pkg/types"
 	"gopkg.in/yaml.v3"
 )
 

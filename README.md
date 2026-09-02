@@ -1,7 +1,7 @@
 # argocd-lint
 
-[![CI]](https://github.com/argocd-lint/argocd-lint/actions/workflows/ci.yaml)
-[![Release]](https://github.com/argocd-lint/argocd-lint/actions/workflows/release.yaml)
+[![CI]](https://github.com/harchuk/argocd-lint/actions/workflows/ci.yaml)
+[![Release]](https://github.com/harchuk/argocd-lint/actions/workflows/release.yml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 ![argocd-lint ready badge](docs/assets/badge.svg)
 
@@ -17,7 +17,7 @@
 
 | Action | Command / Resource |
 | --- | --- |
-| Install latest version | `go install github.com/argocd-lint/argocd-lint/cmd/argocd-lint@latest` |
+| Install latest version | `go install github.com/harchuk/argocd-lint/cmd/argocd-lint@latest` |
 | Lint an environment | `argocd-lint ./apps --severity-threshold=warn` |
 | Preview ApplicationSet drift | `argocd-lint applicationset plan --file appset.yaml` |
 | List bundled policies | `argocd-lint plugins list` |
@@ -49,13 +49,13 @@
 
 | Method | Command |
 | --- | --- |
-| Go toolchain (1.22+) | `go install github.com/argocd-lint/argocd-lint/cmd/argocd-lint@latest` |
+| Go toolchain (1.26+) | `go install github.com/harchuk/argocd-lint/cmd/argocd-lint@latest` |
 | Build from source | ```bash
-git clone https://github.com/argocd-lint/argocd-lint.git
+git clone https://github.com/harchuk/argocd-lint.git
 cd argocd-lint
 go build -o bin/argocd-lint ./cmd/argocd-lint
 ``` |
-| Release binaries | Download from [GitHub Releases](https://github.com/argocd-lint/argocd-lint/releases) and drop on your `$PATH`. |
+| Release binaries | Download from [GitHub Releases](https://github.com/harchuk/argocd-lint/releases) and drop on your `$PATH`. |
 
 Verify the CLI:
 
@@ -227,5 +227,5 @@ for deeper examples.
 
 Licensed under the [Apache 2.0 License](LICENSE).
 
-[CI]: https://img.shields.io/github/actions/workflow/status/argocd-lint/argocd-lint/ci.yaml?branch=main&label=CI
-[Release]: https://img.shields.io/github/actions/workflow/status/argocd-lint/argocd-lint/release.yaml?label=release
+[CI]: https://img.shields.io/github/actions/workflow/status/harchuk/argocd-lint/ci.yaml?branch=main&label=CI
+[Release]: https://img.shields.io/github/actions/workflow/status/harchuk/argocd-lint/release.yml?label=release

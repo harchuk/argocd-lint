@@ -9,15 +9,15 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/argocd-lint/argocd-lint/internal/config"
-	"github.com/argocd-lint/argocd-lint/internal/dryrun"
-	"github.com/argocd-lint/argocd-lint/internal/loader"
-	"github.com/argocd-lint/argocd-lint/internal/manifest"
-	"github.com/argocd-lint/argocd-lint/internal/render"
-	"github.com/argocd-lint/argocd-lint/internal/rule"
-	"github.com/argocd-lint/argocd-lint/internal/schema"
-	"github.com/argocd-lint/argocd-lint/pkg/plugin"
-	"github.com/argocd-lint/argocd-lint/pkg/types"
+	"github.com/harchuk/argocd-lint/internal/config"
+	"github.com/harchuk/argocd-lint/internal/dryrun"
+	"github.com/harchuk/argocd-lint/internal/loader"
+	"github.com/harchuk/argocd-lint/internal/manifest"
+	"github.com/harchuk/argocd-lint/internal/render"
+	"github.com/harchuk/argocd-lint/internal/rule"
+	"github.com/harchuk/argocd-lint/internal/schema"
+	"github.com/harchuk/argocd-lint/pkg/plugin"
+	"github.com/harchuk/argocd-lint/pkg/types"
 )
 
 // Options controls lint execution.
@@ -38,9 +38,10 @@ type Options struct {
 
 // Report is the lint result collection.
 type Report struct {
-	Findings   []types.Finding
-	RuleIndex  map[string]types.RuleMetadata
-	Suppressed []types.Finding
+	Findings    []types.Finding
+	AllFindings []types.Finding
+	RuleIndex   map[string]types.RuleMetadata
+	Suppressed  []types.Finding
 }
 
 // Runner orchestrates parsing, validation, and rule checks.
@@ -298,6 +299,7 @@ func (r *Runner) Run(opts Options) (Report, error) {
 
 	filtered, waiverFindings := applyWaivers(r.cfg, findings, ruleIndex)
 	filtered = append(filtered, waiverFindings...)
+	allFindings := append([]types.Finding(nil), filtered...)
 	var agedBaseline, suppressed []types.Finding
 	if opts.Baseline != nil {
 		baselineFiltered, aged, suppressedEntries := opts.Baseline.Filter(filtered, opts.BaselineAgingDays)
@@ -319,7 +321,7 @@ func (r *Runner) Run(opts Options) (Report, error) {
 		return filtered[i].FilePath < filtered[j].FilePath
 	})
 
-	return Report{Findings: filtered, RuleIndex: ruleIndex, Suppressed: suppressed}, nil
+	return Report{Findings: filtered, AllFindings: allFindings, RuleIndex: ruleIndex, Suppressed: suppressed}, nil
 }
 
 func includeManifest(m *manifest.Manifest, apps, appsets, projects bool) bool {

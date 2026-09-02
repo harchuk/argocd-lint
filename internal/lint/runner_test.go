@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/argocd-lint/argocd-lint/internal/config"
-	"github.com/argocd-lint/argocd-lint/internal/dryrun"
+	"github.com/harchuk/argocd-lint/internal/config"
+	"github.com/harchuk/argocd-lint/internal/dryrun"
 )
 
 func writeManifest(t *testing.T, dir, name, content string) string {

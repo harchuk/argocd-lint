@@ -7,9 +7,9 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/argocd-lint/argocd-lint/internal/config"
-	"github.com/argocd-lint/argocd-lint/internal/manifest"
-	"github.com/argocd-lint/argocd-lint/pkg/types"
+	"github.com/harchuk/argocd-lint/internal/config"
+	"github.com/harchuk/argocd-lint/internal/manifest"
+	"github.com/harchuk/argocd-lint/pkg/types"
 )
 
 // Options controls dry-run validation behaviour.

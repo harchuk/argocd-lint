@@ -11,15 +11,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/argocd-lint/argocd-lint/internal/appsetplan"
-	"github.com/argocd-lint/argocd-lint/internal/config"
-	"github.com/argocd-lint/argocd-lint/internal/dryrun"
-	"github.com/argocd-lint/argocd-lint/internal/lint"
-	"github.com/argocd-lint/argocd-lint/internal/output"
-	"github.com/argocd-lint/argocd-lint/internal/render"
-	regoplugin "github.com/argocd-lint/argocd-lint/pkg/plugin/rego"
-	"github.com/argocd-lint/argocd-lint/pkg/types"
-	"github.com/argocd-lint/argocd-lint/pkg/version"
+	"github.com/harchuk/argocd-lint/internal/appsetplan"
+	"github.com/harchuk/argocd-lint/internal/config"
+	"github.com/harchuk/argocd-lint/internal/dryrun"
+	"github.com/harchuk/argocd-lint/internal/lint"
+	"github.com/harchuk/argocd-lint/internal/output"
+	"github.com/harchuk/argocd-lint/internal/render"
+	regoplugin "github.com/harchuk/argocd-lint/pkg/plugin/rego"
+	"github.com/harchuk/argocd-lint/pkg/types"
+	"github.com/harchuk/argocd-lint/pkg/version"
 	"github.com/spf13/pflag"
 )
 
@@ -64,6 +64,9 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 	baselineAging := flags.Int("baseline-aging", 0, "Report baseline entries older than N days")
 
 	if err := flags.Parse(args); err != nil {
+		if err == pflag.ErrHelp {
+			return 0
+		}
 		printError(stderr, "argument", err)
 		return 2
 	}
@@ -214,7 +217,7 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	if *writeBaseline != "" {
-		if err := lint.WriteBaseline(*writeBaseline, report.Suppressed); err != nil {
+		if err := lint.WriteBaseline(*writeBaseline, report.AllFindings); err != nil {
 			printError(stderr, "baseline", err)
 			return 2
 		}

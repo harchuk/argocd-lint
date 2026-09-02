@@ -16,7 +16,7 @@ flags for your environment.
 1. Build and push a repo-server image:
 
    ```bash
-   export ARGOCD_LINT_VERSION=v0.5.0   # choose the tag you want to deploy
+   export ARGOCD_LINT_VERSION=latest    # or pin an existing release tag
    export TARGETARCH=amd64             # match the cluster architecture
 
    docker build \
@@ -76,8 +76,8 @@ flags for your environment.
 
 - The plugin aborts the sync early when `argocd-lint` reports findings at or
   above the configured severity threshold.
-- If linting succeeds the plugin streams all `.yaml`/`.yml` files from the
-  application directory back to Argo CD, preserving the standard GitOps flow.
+- If linting succeeds the plugin writes findings to stderr and streams all
+  `.yaml`/`.yml` files from the application directory back to Argo CD.
 - Curated bundles are mounted at `/opt/argocd-lint/bundles`, so you can extend
   them with additional policies or point the CLI to bespoke directories.
 

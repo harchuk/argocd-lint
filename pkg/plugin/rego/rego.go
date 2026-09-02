@@ -13,9 +13,9 @@ import (
 	opaast "github.com/open-policy-agent/opa/ast"
 	"github.com/open-policy-agent/opa/rego"
 
-	"github.com/argocd-lint/argocd-lint/internal/manifest"
-	"github.com/argocd-lint/argocd-lint/pkg/plugin"
-	"github.com/argocd-lint/argocd-lint/pkg/types"
+	"github.com/harchuk/argocd-lint/internal/manifest"
+	"github.com/harchuk/argocd-lint/pkg/plugin"
+	"github.com/harchuk/argocd-lint/pkg/types"
 )
 
 // Loader discovers and instantiates Rego-backed plugins.

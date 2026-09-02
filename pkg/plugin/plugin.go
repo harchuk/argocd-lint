@@ -3,8 +3,8 @@ package plugin
 import (
 	"context"
 
-	"github.com/argocd-lint/argocd-lint/internal/manifest"
-	"github.com/argocd-lint/argocd-lint/pkg/types"
+	"github.com/harchuk/argocd-lint/internal/manifest"
+	"github.com/harchuk/argocd-lint/pkg/types"
 )
 
 // Matcher decides whether a plugin applies to a manifest.

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/argocd-lint/argocd-lint/internal/lint"
-	"github.com/argocd-lint/argocd-lint/pkg/types"
+	"github.com/harchuk/argocd-lint/internal/lint"
+	"github.com/harchuk/argocd-lint/pkg/types"
 )
 
 // Format enumerates supported output formats.
@@ -21,10 +21,10 @@ const (
 
 // Metrics summarizes lint output for telemetry purposes.
 type Metrics struct {
-	DurationMillis int64         `json:"durationMillis"`
-	TotalFindings  int           `json:"totalFindings"`
+	DurationMillis int64          `json:"durationMillis"`
+	TotalFindings  int            `json:"totalFindings"`
 	BySeverity     map[string]int `json:"bySeverity"`
-	ByRule         []RuleMetric  `json:"byRule"`
+	ByRule         []RuleMetric   `json:"byRule"`
 }
 
 // RuleMetric captures the count for a specific rule.
@@ -195,7 +195,7 @@ func writeSARIF(report lint.Report, w io.Writer) error {
 	sort.Strings(ruleIDs)
 	driver := sarifTool{}
 	driver.Driver.Name = "argocd-lint"
-	driver.Driver.InformationURI = "https://github.com/argocd-lint/argocd-lint"
+	driver.Driver.InformationURI = "https://github.com/harchuk/argocd-lint"
 	driver.Driver.Rules = make([]sarifRule, 0, len(ruleIDs))
 	for _, id := range ruleIDs {
 		meta := report.RuleIndex[id]

@@ -3,7 +3,7 @@ package schema
 import (
 	"testing"
 
-	"github.com/argocd-lint/argocd-lint/internal/manifest"
+	"github.com/harchuk/argocd-lint/internal/manifest"
 )
 
 func TestSchemaValidatorDetectsInvalidApplication(t *testing.T) {

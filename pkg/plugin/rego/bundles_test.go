@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"testing"
 
-	regoloader "github.com/argocd-lint/argocd-lint/pkg/plugin/rego"
+	regoloader "github.com/harchuk/argocd-lint/pkg/plugin/rego"
 )
 
 func TestCuratedBundlesCompile(t *testing.T) {

@@ -34,6 +34,53 @@ func TestPluginsListTable(t *testing.T) {
 	}
 }
 
+func TestHelpReturnsSuccess(t *testing.T) {
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	code := Execute([]string{"--help"}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("expected help to return 0, got %d", code)
+	}
+	if strings.Contains(errBuf.String(), "[ERROR]") {
+		t.Fatalf("help should not be reported as an error: %s", errBuf.String())
+	}
+}
+
+func TestWriteBaselinePersistsCurrentFindings(t *testing.T) {
+	dir := t.TempDir()
+	manifestPath := filepath.Join(dir, "app.yaml")
+	manifest := `apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: demo
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+  source:
+    repoURL: https://example.com/repo.git
+    targetRevision: main
+    path: manifests
+`
+	if err := os.WriteFile(manifestPath, []byte(manifest), 0o600); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+	baselinePath := filepath.Join(dir, ".lint", "baseline.json")
+	var out bytes.Buffer
+	var errBuf bytes.Buffer
+	code := Execute([]string{manifestPath, "--write-baseline", baselinePath, "--format", "json"}, &out, &errBuf)
+	if code != 1 {
+		t.Fatalf("expected lint findings to return 1, got %d (stderr: %s)", code, errBuf.String())
+	}
+	data, err := os.ReadFile(baselinePath)
+	if err != nil {
+		t.Fatalf("read baseline: %v", err)
+	}
+	if !strings.Contains(string(data), `"rule": "AR001"`) {
+		t.Fatalf("expected current findings in baseline, got %s", data)
+	}
+}
+
 func TestPluginsListJSON(t *testing.T) {
 	_, self, _, ok := runtime.Caller(0)
 	if !ok {

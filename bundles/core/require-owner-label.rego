@@ -6,7 +6,7 @@ metadata := {
   "severity": "warn",
   "applies_to": ["Application", "ApplicationSet"],
   "category": "observability",
-  "help_url": "https://github.com/argocd-lint/argocd-lint/blob/main/docs/PLUGINS.md#core-bundle",
+  "help_url": "https://github.com/harchuk/argocd-lint/blob/main/docs/PLUGINS.md#core-bundle",
 }
 
 applies {

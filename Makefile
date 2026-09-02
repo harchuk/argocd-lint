@@ -36,8 +36,9 @@ release:
 			OUTPUT="$(DIST_DIR)/$(BINARY)-$$GOOS-$$GOARCH$$EXT"; \
 			echo "Building $$OUTPUT"; \
 			GOOS=$$GOOS GOARCH=$$GOARCH go build -o $$OUTPUT ./cmd/argocd-lint; \
-		done; \
+	done; \
 	done
+	@./scripts/package-plugin-bundles.sh $(DIST_DIR)
 
 seed:
 	@echo "Placeholder for seeding test data"

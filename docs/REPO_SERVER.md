@@ -36,8 +36,8 @@ The provided CMP executes the following steps:
 1. Invoke `argocd-lint $ARGOCD_APP_BASE_DIR --plugin-dir /opt/argocd-lint/bundles/core --severity-threshold=error`.
 2. If linting fails, the plugin returns a non-zero exit code and the sync is
    halted, surfacing the findings inside the Argo CD UI.
-3. On success it streams the original manifests to `stdout` so Argo CD (and any
-   other configured generators) continue unaffected.
+3. On success it writes lint findings to `stderr` and streams the original
+   manifests to `stdout` for Argo CD to parse.
 
 Because the linter exits early on violations, the repo-server prevents bad
 changes from reaching the cluster even if they bypass external CI checks.

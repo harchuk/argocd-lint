@@ -3,9 +3,9 @@ package rule
 import (
 	"testing"
 
-	"github.com/argocd-lint/argocd-lint/internal/config"
-	"github.com/argocd-lint/argocd-lint/internal/manifest"
-	"github.com/argocd-lint/argocd-lint/pkg/types"
+	"github.com/harchuk/argocd-lint/internal/config"
+	"github.com/harchuk/argocd-lint/internal/manifest"
+	"github.com/harchuk/argocd-lint/pkg/types"
 )
 
 func TestRuleTargetRevisionPinned(t *testing.T) {

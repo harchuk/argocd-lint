@@ -6,7 +6,7 @@ metadata := {
   "severity": "error",
   "applies_to": ["Application", "ApplicationSet"],
   "category": "security",
-  "help_url": "https://github.com/argocd-lint/argocd-lint/tree/main/bundles/security",
+  "help_url": "https://github.com/harchuk/argocd-lint/tree/main/bundles/security",
 }
 
 deny[f] {

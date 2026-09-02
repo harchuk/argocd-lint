@@ -9,7 +9,7 @@ Please review and follow our [Code of Conduct](CODE_OF_CONDUCT.md). By participa
 ## Getting started
 
 1. Fork the repository and create a feature branch from `main`.
-2. Install Go 1.22 or newer.
+2. Install Go 1.26 or newer.
 3. Run `go mod tidy` to populate dependencies.
 4. Build and test locally:
    ```bash

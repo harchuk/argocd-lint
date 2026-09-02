@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/argocd-lint/argocd-lint/internal/manifest"
-	regoloader "github.com/argocd-lint/argocd-lint/pkg/plugin/rego"
+	"github.com/harchuk/argocd-lint/internal/manifest"
+	regoloader "github.com/harchuk/argocd-lint/pkg/plugin/rego"
 )
 
 func TestLoaderLoadsRegoPlugin(t *testing.T) {

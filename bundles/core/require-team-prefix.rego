@@ -6,7 +6,7 @@ metadata := {
   "severity": "warn",
   "applies_to": ["Application"],
   "category": "governance",
-  "help_url": "https://github.com/argocd-lint/argocd-lint/blob/main/docs/PLUGINS.md#core-bundle",
+  "help_url": "https://github.com/harchuk/argocd-lint/blob/main/docs/PLUGINS.md#core-bundle",
 }
 
 # adjust the prefixes to your organisation's naming conventions
