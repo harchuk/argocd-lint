@@ -110,6 +110,28 @@ func TestWriteSARIF(t *testing.T) {
 	}
 }
 
+func TestWriteSARIFIncludesRuleMetadata(t *testing.T) {
+	var buf bytes.Buffer
+	if err := Write(sampleReport(), FormatSARIF, &buf); err != nil {
+		t.Fatal(err)
+	}
+	var payload struct {
+		Runs []struct {
+			Tool struct {
+				Driver struct {
+					Rules []struct{ ID, Name string } `json:"rules"`
+				} `json:"driver"`
+			} `json:"tool"`
+		} `json:"runs"`
+	}
+	if err := json.Unmarshal(buf.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if len(payload.Runs) != 1 || len(payload.Runs[0].Tool.Driver.Rules) != 1 || payload.Runs[0].Tool.Driver.Rules[0].ID != "AR001" {
+		t.Fatalf("SARIF rule metadata missing: %#v", payload)
+	}
+}
+
 func TestHighestSeverity(t *testing.T) {
 	findings := []types.Finding{
 		{Severity: types.SeverityInfo},
