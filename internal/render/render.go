@@ -130,7 +130,16 @@ func (r *Renderer) Render(m *manifest.Manifest) ([]types.Finding, error) {
 		absPath = filepath.Clean(absPath)
 		info, err := os.Stat(absPath)
 		if err != nil || !info.IsDir() {
-			// Ignore sources we cannot resolve locally.
+			// Remote repositories are resolved by Argo CD, not the local linter.
+			if strings.TrimSpace(getString(src, "repoURL")) != "" {
+				continue
+			}
+			cfg, cfgErr := r.cfg.Resolve(helmRuleMeta, m.FilePath)
+			if cfgErr != nil {
+				return nil, cfgErr
+			}
+			builder := types.FindingBuilder{Rule: cfg, FilePath: m.FilePath, Line: m.MetadataLine, ResourceName: m.Name, ResourceKind: m.Kind}
+			findings = append(findings, builder.NewFinding(fmt.Sprintf("render source path %q cannot be resolved locally", path), cfg.Severity))
 			continue
 		}
 
