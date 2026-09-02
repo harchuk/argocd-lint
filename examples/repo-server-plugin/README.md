@@ -7,7 +7,8 @@ flags for your environment.
 ## Contents
 
 - `Dockerfile` – extends the official repo-server image with the `argocd-lint`
-  binary and curated Rego bundles shipped with this repository.
+  binary and curated Rego bundles shipped with this repository. The base
+  Argo CD v3.5.2 image supplies Helm and Kustomize for source rendering.
 - `plugin.yaml` – CMP definition that executes `argocd-lint` against the
   application sources before streaming the manifests back to Argo CD.
 
@@ -76,8 +77,9 @@ flags for your environment.
 
 - The plugin aborts the sync early when `argocd-lint` reports findings at or
   above the configured severity threshold.
-- If linting succeeds the plugin writes findings to stderr and streams all
-  `.yaml`/`.yml` files from the application directory back to Argo CD.
+- If linting succeeds the plugin writes findings to stderr and streams rendered
+  Helm/Kustomize output (or raw `.yaml`/`.yml` files for plain directories) to
+  Argo CD.
 - Curated bundles are mounted at `/opt/argocd-lint/bundles`, so you can extend
   them with additional policies or point the CLI to bespoke directories.
 
