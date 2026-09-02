@@ -172,7 +172,9 @@ jobs:
           path: dist
       - name: Verify binary
         run: |
-          chmod +x dist/argocd-lint-linux-amd64
-          dist/argocd-lint-linux-amd64 --version
-          dist/argocd-lint-linux-amd64 examples/apps/app-good.yaml --format json > /tmp/report.json
+          binary=$(find dist -type f -name 'argocd-lint-linux-amd64' -print -quit)
+          test -n "$binary"
+          chmod +x "$binary"
+          "$binary" --version
+          "$binary" examples/apps/app-good.yaml --format json > /tmp/report.json
           grep -q '"findings"' /tmp/report.json
