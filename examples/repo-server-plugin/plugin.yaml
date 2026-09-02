@@ -36,5 +36,11 @@ data:
             fi
             cat "$lint_output" >&2
 
-            find "$ARGOCD_APP_BASE_DIR" -type f \( -name '*.yaml' -o -name '*.yml' \) \
-              -print0 | xargs -0 -I{} sh -c 'echo "---"; cat "{}"'
+            if [ -f "$ARGOCD_APP_BASE_DIR/Chart.yaml" ] && command -v helm >/dev/null 2>&1; then
+              helm template argocd-lint "$ARGOCD_APP_BASE_DIR"
+            elif [ -f "$ARGOCD_APP_BASE_DIR/kustomization.yaml" ] || [ -f "$ARGOCD_APP_BASE_DIR/kustomization.yml" ]; then
+              kustomize build "$ARGOCD_APP_BASE_DIR"
+            else
+              find "$ARGOCD_APP_BASE_DIR" -type f \( -name '*.yaml' -o -name '*.yml' \) \
+                -print0 | xargs -0 -I{} sh -c 'echo "---"; cat "{}"'
+            fi
